@@ -1,43 +1,75 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
 import StatCard from '../components/StatCard'
 import '../styles/dashboard.css'
+import { getDashboardStats, getRiskZones, getFraudAlerts } from '../services/adminService'
 
 /**
  * Admin Dashboard Component
  * Displays platform metrics, claims overview, and fraud detection alerts
  */
 const AdminDashboard = () => {
-  // Mock platform metrics
-  const [metrics] = useState({
-    workersInsured: 1247,
-    activePolicies: 892,
-    totalPremium: 13380,
-    totalPayout: 45600
+  const [metrics, setMetrics] = useState({
+    workersInsured: 0,
+    activePolicies: 0,
+    totalPremium: 0,
+    totalPayout: 0
   })
-
-  // Mock claims overview
-  const [claimsOverview] = useState({
-    claimsToday: 23,
-    claimsThisWeek: 156,
-    totalPayout: 45600
+  const [claimsOverview, setClaimsOverview] = useState({
+    claimsToday: 0,
+    claimsThisWeek: 0,
+    totalPayout: 0
   })
+  const [fraudAlerts, setFraudAlerts] = useState([])
+  const [riskZones, setRiskZones] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  // Mock fraud alerts
-  const [fraudAlerts] = useState([
-    { id: 1, type: 'GPS mismatch detected', severity: 'high' },
-    { id: 2, type: 'Duplicate claim flagged', severity: 'medium' },
-    { id: 3, type: 'Suspicious claim pattern', severity: 'low' }
-  ])
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [statsResponse, riskZonesResponse, fraudResponse] = await Promise.all([
+          getDashboardStats(),
+          getRiskZones(),
+          getFraudAlerts()
+        ])
 
-  // Mock risk zones
-  const [riskZones] = useState([
-    { area: 'South Mumbai', riskLevel: 'High' },
-    { area: 'Andheri', riskLevel: 'Medium' },
-    { area: 'Bandra', riskLevel: 'Low' },
-    { area: 'Powai', riskLevel: 'High' },
-    { area: 'Thane', riskLevel: 'Medium' }
-  ])
+        setMetrics(statsResponse.platformMetrics)
+        setClaimsOverview(statsResponse.claimsOverview)
+        setRiskZones(riskZonesResponse)
+        setFraudAlerts(fraudResponse)
+      } catch (err) {
+        setError('Failed to load dashboard data')
+        console.error('Dashboard error:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDashboardData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="dashboard-container">
+        <Navbar />
+        <div className="dashboard-content">
+          <div className="loading">Loading dashboard...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="dashboard-container">
+        <Navbar />
+        <div className="dashboard-content">
+          <div className="error">{error}</div>
+        </div>
+      </div>
+    )
+  }
 
   const getRiskClass = (level) => {
     return level.toLowerCase()

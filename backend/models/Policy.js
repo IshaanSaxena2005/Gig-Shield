@@ -1,36 +1,53 @@
-const mongoose = require('mongoose')
+const { DataTypes } = require('sequelize')
+const { sequelize } = require('../config/db')
+const User = require('./User')
 
-const policySchema = new mongoose.Schema({
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+const Policy = sequelize.define('Policy', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  userId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: User,
+      key: 'id'
+    }
   },
   type: {
-    type: String,
-    required: true
+    type: DataTypes.STRING,
+    allowNull: false
   },
   premium: {
-    type: Number,
-    required: true
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false
   },
   coverage: {
-    type: Number,
-    required: true
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false
   },
   startDate: {
-    type: Date,
-    default: Date.now
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
   },
   endDate: {
-    type: Date,
-    required: true
+    type: DataTypes.DATE,
+    allowNull: false
   },
   status: {
-    type: String,
-    enum: ['active', 'expired', 'cancelled'],
-    default: 'active'
+    type: DataTypes.ENUM('active', 'expired', 'cancelled'),
+    defaultValue: 'active'
   }
+}, {
+  timestamps: true,
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 })
 
-module.exports = mongoose.model('Policy', policySchema)
+// Define associations
+Policy.belongsTo(User, { foreignKey: 'userId', as: 'user' })
+User.hasMany(Policy, { foreignKey: 'userId', as: 'policies' })
+
+module.exports = Policy

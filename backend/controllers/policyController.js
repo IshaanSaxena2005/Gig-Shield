@@ -6,7 +6,7 @@ const { getWeatherData } = require('../services/weatherService')
 
 exports.getPolicies = async (req, res) => {
   try {
-    const policies = await Policy.find({ user: req.user.id })
+    const policies = await Policy.findAll({ where: { userId: req.user.id } })
     res.json(policies)
   } catch (error) {
     res.status(500).json({ message: error.message })
@@ -15,14 +15,16 @@ exports.getPolicies = async (req, res) => {
 
 exports.getPolicyById = async (req, res) => {
   try {
-    const policy = await Policy.findById(req.params.id).populate('user', 'name email')
+    const policy = await Policy.findByPk(req.params.id, {
+      include: [{ model: User, as: 'user', attributes: ['name', 'email'] }]
+    })
 
     if (!policy) {
       return res.status(404).json({ message: 'Policy not found' })
     }
 
     // Check if user owns the policy or is admin
-    if (policy.user._id.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (policy.userId !== req.user.id && req.user.role !== 'admin') {
       return res.status(401).json({ message: 'Not authorized' })
     }
 
@@ -37,7 +39,7 @@ exports.createPolicy = async (req, res) => {
     const { type, coverage, occupation, location } = req.body
 
     // Get risk zone data
-    const riskZone = await RiskZone.findOne({ location: location })
+    const riskZone = await RiskZone.findOne({ where: { location } })
 
     // Get weather data for risk assessment
     const weatherData = await getWeatherData(location)
@@ -58,7 +60,7 @@ exports.createPolicy = async (req, res) => {
     endDate.setFullYear(endDate.getFullYear() + 1)
 
     const policy = await Policy.create({
-      user: req.user.id,
+      userId: req.user.id,
       type,
       premium: calculatedPremium,
       coverage,
@@ -73,7 +75,7 @@ exports.createPolicy = async (req, res) => {
 
 exports.updatePolicy = async (req, res) => {
   try {
-    const policy = await Policy.findById(req.params.id)
+    const policy = await Policy.findByPk(req.params.id)
 
     if (!policy) {
       return res.status(404).json({ message: 'Policy not found' })
@@ -84,9 +86,10 @@ exports.updatePolicy = async (req, res) => {
       return res.status(401).json({ message: 'Not authorized' })
     }
 
-    const updatedPolicy = await Policy.findByIdAndUpdate(req.params.id, req.body, {
-      new: true
-    }).populate('user', 'name email')
+    await policy.update(req.body)
+    const updatedPolicy = await Policy.findByPk(req.params.id, {
+      include: [{ model: User, as: 'user', attributes: ['name', 'email'] }]
+    })
 
     res.json(updatedPolicy)
   } catch (error) {
@@ -96,9 +99,10 @@ exports.updatePolicy = async (req, res) => {
 
 exports.getAllPolicies = async (req, res) => {
   try {
-    const policies = await Policy.find({})
-      .populate('user', 'name email')
-      .sort({ startDate: -1 })
+    const policies = await Policy.findAll({
+      include: [{ model: User, as: 'user', attributes: ['name', 'email'] }],
+      order: [['startDate', 'DESC']]
+    })
     res.json(policies)
   } catch (error) {
     res.status(500).json({ message: error.message })

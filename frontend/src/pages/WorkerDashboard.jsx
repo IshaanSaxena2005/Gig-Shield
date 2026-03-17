@@ -4,33 +4,85 @@ import Navbar from '../components/Navbar'
 import WorkerCard from '../components/WorkerCard'
 import ClaimAlert from '../components/ClaimAlert'
 import '../styles/dashboard.css'
+import { getDashboardData } from '../services/userService'
+import { getClaims } from '../services/claimService'
 
 /**
  * Worker Dashboard Component
  * Main dashboard for delivery partners to view their insurance and claims
  */
 const WorkerDashboard = () => {
-  // Mock worker data
-  const [workerData] = useState({
-    name: 'Rajesh Kumar',
-    platform: 'Zomato',
-    location: 'Mumbai',
-    weeklyPremium: 15,
-    coverageLimit: 800,
-    status: 'Active',
+  const [dashboardData, setDashboardData] = useState(null)
+  const [claimsHistory, setClaimsHistory] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [dashboardResponse, claimsResponse] = await Promise.all([
+          getDashboardData(),
+          getClaims()
+        ])
+
+        setDashboardData(dashboardResponse)
+        setClaimsHistory(claimsResponse)
+      } catch (err) {
+        setError('Failed to load dashboard data')
+        console.error('Dashboard error:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDashboardData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="dashboard-container">
+        <Navbar />
+        <div className="dashboard-content">
+          <div className="loading">Loading dashboard...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="dashboard-container">
+        <Navbar />
+        <div className="dashboard-content">
+          <div className="error">{error}</div>
+        </div>
+      </div>
+    )
+  }
+
+  const workerData = dashboardData ? {
+    name: 'User', // Would come from auth context
+    platform: 'Delivery Platform',
+    location: 'Location',
+    weeklyPremium: dashboardData.policy?.premium || 0,
+    coverageLimit: dashboardData.policy?.coverage || 0,
+    status: dashboardData.policy?.status || 'Inactive',
+    riskLevel: dashboardData.riskLevel || 'Medium',
+    earningsProtected: dashboardData.earningsProtected || 0
+  } : {
+    name: 'User',
+    platform: 'Delivery Platform',
+    location: 'Location',
+    weeklyPremium: 0,
+    coverageLimit: 0,
+    status: 'Inactive',
     riskLevel: 'Medium',
-    earningsProtected: 300
-  })
+    earningsProtected: 0
+  }
 
-  // Mock claims history
-  const [claimsHistory] = useState([
-    { id: 1, date: 'Mar 10', disruption: 'Heavy Rain', amount: 150, status: 'Paid' },
-    { id: 2, date: 'Mar 12', disruption: 'Flood', amount: 200, status: 'Paid' }
-  ])
-
-  // Mock alerts
+  // Mock alerts - in real app, this would come from API
   const [alerts] = useState([
-    { id: 1, title: 'Disruption detected in your area', message: 'Insurance claim approved', amount: 150 }
+    { id: 1, title: 'Weather monitoring active', message: 'Your area is being monitored for disruptions', amount: null }
   ])
 
   return (

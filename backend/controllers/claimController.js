@@ -1,13 +1,15 @@
 const Claim = require('../models/Claim')
 const Policy = require('../models/Policy')
 const { detectFraud } = require('../services/fraudDetection')
+const { Op } = require('sequelize')
 
 exports.getClaims = async (req, res) => {
   try {
-    const claims = await Claim.find({ user: req.user.id })
-      .populate('policy')
-      .populate('user', 'name email')
-      .sort({ submittedAt: -1 })
+    const claims = await Claim.findAll({
+      where: { userId: req.user.id },
+      include: [{ model: Policy, as: 'policy' }],
+      order: [['submittedAt', 'DESC']]
+    })
     res.json(claims)
   } catch (error) {
     res.status(500).json({ message: error.message })
@@ -16,16 +18,19 @@ exports.getClaims = async (req, res) => {
 
 exports.getClaimById = async (req, res) => {
   try {
-    const claim = await Claim.findById(req.params.id)
-      .populate('policy')
-      .populate('user', 'name email')
+    const claim = await Claim.findByPk(req.params.id, {
+      include: [
+        { model: Policy, as: 'policy' },
+        { model: require('../models/User'), as: 'user', attributes: ['name', 'email'] }
+      ]
+    })
 
     if (!claim) {
       return res.status(404).json({ message: 'Claim not found' })
     }
 
     // Check if user owns the claim or is admin
-    if (claim.user._id.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (claim.userId !== req.user.id && req.user.role !== 'admin') {
       return res.status(401).json({ message: 'Not authorized' })
     }
 
@@ -40,26 +45,26 @@ exports.createClaim = async (req, res) => {
     const { policyId, amount, description } = req.body
 
     // Get policy details
-    const policy = await Policy.findById(policyId)
+    const policy = await Policy.findByPk(policyId)
     if (!policy) {
       return res.status(404).json({ message: 'Policy not found' })
     }
 
     // Check if policy belongs to user
-    if (policy.user.toString() !== req.user.id) {
+    if (policy.userId !== req.user.id) {
       return res.status(401).json({ message: 'Not authorized' })
     }
 
     // Fraud detection
-    const userClaims = await Claim.find({ user: req.user.id })
+    const userClaims = await Claim.findAll({ where: { userId: req.user.id } })
     const fraudCheck = detectFraud(
       { amount, description, policyCoverage: policy.coverage },
       userClaims
     )
 
     const claim = await Claim.create({
-      user: req.user.id,
-      policy: policyId,
+      userId: req.user.id,
+      policyId,
       amount,
       description,
       status: fraudCheck.isFraudulent ? 'pending' : 'approved'
@@ -76,7 +81,7 @@ exports.createClaim = async (req, res) => {
 
 exports.updateClaim = async (req, res) => {
   try {
-    const claim = await Claim.findById(req.params.id)
+    const claim = await Claim.findByPk(req.params.id)
 
     if (!claim) {
       return res.status(404).json({ message: 'Claim not found' })
@@ -87,11 +92,13 @@ exports.updateClaim = async (req, res) => {
       return res.status(401).json({ message: 'Not authorized' })
     }
 
-    const updatedClaim = await Claim.findByIdAndUpdate(
-      req.params.id,
-      { ...req.body, processedAt: new Date() },
-      { new: true }
-    ).populate('policy').populate('user', 'name email')
+    await claim.update({ ...req.body, processedAt: new Date() })
+    const updatedClaim = await Claim.findByPk(req.params.id, {
+      include: [
+        { model: Policy, as: 'policy' },
+        { model: require('../models/User'), as: 'user', attributes: ['name', 'email'] }
+      ]
+    })
 
     res.json(updatedClaim)
   } catch (error) {
@@ -101,10 +108,13 @@ exports.updateClaim = async (req, res) => {
 
 exports.getAllClaims = async (req, res) => {
   try {
-    const claims = await Claim.find({})
-      .populate('policy')
-      .populate('user', 'name email')
-      .sort({ submittedAt: -1 })
+    const claims = await Claim.findAll({
+      include: [
+        { model: Policy, as: 'policy' },
+        { model: require('../models/User'), as: 'user', attributes: ['name', 'email'] }
+      ],
+      order: [['submittedAt', 'DESC']]
+    })
     res.json(claims)
   } catch (error) {
     res.status(500).json({ message: error.message })

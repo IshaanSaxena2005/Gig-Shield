@@ -1,11 +1,17 @@
 const express = require('express')
 const cors = require('cors')
 const dotenv = require('dotenv')
-const connectDB = require('./config/db')
+const { connectDB } = require('./config/db')
 const { processAutomaticClaims } = require('./services/triggerService')
 
 // Load environment variables
-dotenv.config()
+dotenv.config({ path: '../.env' })
+
+// Import models to ensure they are registered
+require('./models/User')
+require('./models/Policy')
+require('./models/Claim')
+require('./models/RiskZone')
 
 // Connect to database
 connectDB()

@@ -2,6 +2,7 @@
 const Policy = require('../models/Policy')
 const Claim = require('../models/Claim')
 const { getWeatherData } = require('./weatherService')
+const { Op } = require('sequelize')
 
 const checkWeatherTriggers = async (policies, weatherData) => {
   const triggeredClaims = []
@@ -11,15 +12,17 @@ const checkWeatherTriggers = async (policies, weatherData) => {
         weatherData.rain && weatherData.rain['1h'] > 10) {
       // Heavy rain trigger
       const existingClaim = await Claim.findOne({
-        user: policy.user,
-        description: { $regex: 'Heavy rain', $options: 'i' },
-        submittedAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Last 24 hours
+        where: {
+          userId: policy.userId,
+          description: { [Op.iLike]: '%Heavy rain%' },
+          submittedAt: { [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Last 24 hours
+        }
       })
 
       if (!existingClaim) {
         triggeredClaims.push({
-          policyId: policy._id,
-          userId: policy.user,
+          policyId: policy.id,
+          userId: policy.userId,
           amount: Math.min(policy.coverage * 0.1, 200), // 10% of coverage, max 200
           reason: 'Heavy rain damage - Automatic claim'
         })
@@ -29,15 +32,17 @@ const checkWeatherTriggers = async (policies, weatherData) => {
     if (weatherData.weather[0].main.toLowerCase() === 'thunderstorm') {
       // Thunderstorm trigger
       const existingClaim = await Claim.findOne({
-        user: policy.user,
-        description: { $regex: 'Thunderstorm', $options: 'i' },
-        submittedAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+        where: {
+          userId: policy.userId,
+          description: { [Op.iLike]: '%Thunderstorm%' },
+          submittedAt: { [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+        }
       })
 
       if (!existingClaim) {
         triggeredClaims.push({
-          policyId: policy._id,
-          userId: policy.user,
+          policyId: policy.id,
+          userId: policy.userId,
           amount: Math.min(policy.coverage * 0.15, 300), // 15% of coverage, max 300
           reason: 'Thunderstorm damage - Automatic claim'
         })
@@ -50,11 +55,14 @@ const checkWeatherTriggers = async (policies, weatherData) => {
 
 const processAutomaticClaims = async () => {
   try {
-    // Get all active policies
-    const policies = await Policy.find({ status: 'active' }).populate('user')
+    // Get all active policies with user data
+    const policies = await Policy.findAll({
+      where: { status: 'active' },
+      include: [{ model: require('../models/User'), as: 'user' }]
+    })
 
     for (const policy of policies) {
-      if (policy.user.location) {
+      if (policy.user && policy.user.location) {
         const weatherData = await getWeatherData(policy.user.location)
 
         if (weatherData) {

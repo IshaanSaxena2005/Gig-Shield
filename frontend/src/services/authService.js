@@ -8,21 +8,8 @@ import api from './api'
 // Login user
 export const loginUser = async (email, password) => {
   try {
-    // Mock API call - replace with actual endpoint
-    // const response = await api.post('/auth/login', { email, password })
-    
-    // Simulated response for prototype
-    const mockResponse = {
-      data: {
-        user: { email, name: 'Rajesh Kumar' },
-        token: 'mock-jwt-token-12345'
-      }
-    }
-    
-    // Store user data in localStorage
-    localStorage.setItem('user', JSON.stringify(mockResponse.data))
-    
-    return mockResponse.data
+    const response = await api.post('/auth/login', { email, password })
+    return response.data
   } catch (error) {
     console.error('Login error:', error)
     throw error
@@ -32,22 +19,28 @@ export const loginUser = async (email, password) => {
 // Register new user
 export const registerUser = async (userData) => {
   try {
-    // Mock API call - replace with actual endpoint
-    // const response = await api.post('/auth/register', userData)
-    
-    // Simulated response for prototype
-    const mockResponse = {
-      data: {
-        message: 'Registration successful',
-        user: userData
-      }
-    }
-    
-    return mockResponse.data
+    const response = await api.post('/auth/register', userData)
+    return response.data
   } catch (error) {
     console.error('Registration error:', error)
     throw error
   }
+}
+
+// Get user profile
+export const getUserProfile = async () => {
+  try {
+    const response = await api.get('/auth/profile')
+    return response.data
+  } catch (error) {
+    console.error('Profile fetch error:', error)
+    throw error
+  }
+}
+
+// Logout user
+export const logoutUser = () => {
+  localStorage.removeItem('user')
 }
 
 // Logout user

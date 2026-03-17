@@ -1,23 +1,33 @@
-const mongoose = require('mongoose')
+const { DataTypes } = require('sequelize')
+const { sequelize } = require('../config/db')
 
-const riskZoneSchema = new mongoose.Schema({
+const RiskZone = sequelize.define('RiskZone', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
   location: {
-    type: String,
-    required: true
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true
   },
   riskLevel: {
-    type: String,
-    enum: ['low', 'medium', 'high'],
-    required: true
+    type: DataTypes.ENUM('low', 'medium', 'high'),
+    allowNull: false
   },
-  weatherConditions: [{
-    condition: String,
-    probability: Number
-  }],
+  weatherConditions: {
+    type: DataTypes.JSON,
+    allowNull: true
+  },
   updatedAt: {
-    type: Date,
-    default: Date.now
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
   }
+}, {
+  timestamps: true,
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 })
 
-module.exports = mongoose.model('RiskZone', riskZoneSchema)
+module.exports = RiskZone

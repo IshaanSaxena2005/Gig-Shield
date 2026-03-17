@@ -5,18 +5,21 @@ A comprehensive React frontend platform that protects delivery partners (Zomato,
 ## 🚀 Features
 
 ### For Delivery Partners (Workers)
+
 - **Worker Dashboard** - View insurance summary, earnings protection, and claims history
 - **Policy Management** - Activate, pause, or cancel insurance policies
 - **Automatic Claims** - Parametric triggers automatically process claims during disruptions
 - **Real-time Alerts** - Instant notifications when claims are approved and paid
 
 ### For Admins
+
 - **Platform Metrics** - Track workers insured, active policies, premiums, and payouts
 - **Claims Overview** - Monitor daily, weekly, and total claims
 - **Fraud Detection** - AI-powered fraud alerts for suspicious claims
 - **Risk Zones** - Geographic risk assessment visualization
 
 ### Key Characteristics
+
 - ✅ Loss of income insurance ONLY (no health/accident/life/vehicle)
 - ✅ Weekly-based insurance pricing
 - ✅ Automatic claims through parametric events
@@ -25,11 +28,31 @@ A comprehensive React frontend platform that protects delivery partners (Zomato,
 
 ## 🛠️ Tech Stack
 
+### Frontend
+
 - **React 19** with Vite
 - **React Router DOM** for routing
 - **Axios** for API calls
 - **CSS3** with modern styling
 - **Functional Components** with Hooks
+
+### Backend
+
+- **Node.js** with Express.js
+- **MySQL** with Sequelize ORM
+- **JWT** for authentication
+- **bcryptjs** for password hashing
+
+### AI Engine
+
+- **Python** with scikit-learn
+- **pandas** for data processing
+- **Machine Learning** for risk assessment
+
+### External Services
+
+- **OpenWeatherMap API** for weather data
+- **Stripe** for payments
 
 ## 📁 Project Structure
 
@@ -60,24 +83,69 @@ src/
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - Node.js (v16 or higher)
 - npm or yarn
+- MySQL Server (v8.0 or higher)
+- Python 3.8+ (for AI engine)
+
+### Database Setup
+
+1. Install and start MySQL Server
+2. Create the database:
+   - Open MySQL Workbench or command line
+   - Run: `CREATE DATABASE gig_shield;`
+   - Or use the provided `database-setup.sql` file
+
+3. Update `.env` file with your MySQL credentials:
+   ```
+   DB_USER=your_mysql_username
+   DB_PASSWORD=your_mysql_password
+   ```
 
 ### Installation
 
-1. Install dependencies:
+1. Install backend dependencies:
+
 ```bash
+cd backend
 npm install
 ```
 
-2. Start development server:
+2. Install frontend dependencies:
+
 ```bash
-npm run dev
+cd frontend
+npm install
+```
+
+3. Start the backend server:
+
+```bash
+cd backend
+npm start
+```
+
+4. Start the frontend development server:
+
+```bash
+cd frontend
+npm start
+```
+
+The application will be available at:
+
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:5000
+  npm run dev
+
 ```
 
 3. Open browser and navigate to:
 ```
+
 http://localhost:5173
+
 ```
 
 ## 📱 Available Routes
@@ -116,7 +184,9 @@ The application uses mocked services for prototype purposes:
 
 ### Base URL
 ```
+
 http://localhost:5000/api
+
 ```
 
 ### Services
@@ -208,3 +278,4 @@ Built for the AI Powered Parametric Insurance Hackathon.
 ---
 
 **GigShield AI** - Protecting gig workers across India 🇮🇳
+```

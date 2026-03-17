@@ -6,15 +6,24 @@ const { getWeatherData } = require('../services/weatherService')
 exports.getDashboardData = async (req, res) => {
   try {
     // Get user's active policy
-    const policy = await Policy.findOne({ user: req.user.id, status: 'active' })
+    const policy = await Policy.findOne({
+      where: {
+        userId: req.user.id,
+        status: 'active'
+      }
+    })
 
     // Get user's claims
-    const claims = await Claim.find({ user: req.user.id })
-      .sort({ submittedAt: -1 })
-      .limit(10)
+    const claims = await Claim.findAll({
+      where: { userId: req.user.id },
+      order: [['submittedAt', 'DESC']],
+      limit: 10
+    })
 
     // Get risk zone data
-    const riskZone = await RiskZone.findOne({ location: req.user.location })
+    const riskZone = await RiskZone.findOne({
+      where: { location: req.user.location }
+    })
 
     // Get current weather
     const weatherData = await getWeatherData(req.user.location)
@@ -24,14 +33,14 @@ exports.getDashboardData = async (req, res) => {
 
     res.json({
       policy: policy ? {
-        id: policy._id,
+        id: policy.id,
         type: policy.type,
         premium: policy.premium,
         coverage: policy.coverage,
         status: policy.status
       } : null,
       claims: claims.map(claim => ({
-        id: claim._id,
+        id: claim.id,
         date: claim.submittedAt.toDateString(),
         disruption: claim.description,
         amount: claim.amount,
