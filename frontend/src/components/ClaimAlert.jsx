@@ -1,13 +1,19 @@
 import React from 'react'
+import '../styles/dashboard.css'
 
-const ClaimAlert = ({ claim }) => {
+/**
+ * ClaimAlert Component
+ * Shows notification when a claim is processed and approved
+ */
+const ClaimAlert = ({ title, message, amount }) => {
   return (
-    <div className="card alert">
-      <h4>Claim Alert</h4>
-      <p>Worker: {claim.workerName}</p>
-      <p>Amount: ${claim.amount}</p>
-      <p>Status: {claim.status}</p>
-      <button className="btn">Process Claim</button>
+    <div className="claim-alert">
+      <div className="alert-icon">✓</div>
+      <div className="alert-content">
+        <h4 className="alert-title">{title}</h4>
+        <p className="alert-message">{message}</p>
+        {amount && <p className="alert-amount">₹{amount} credited to your account</p>}
+      </div>
     </div>
   )
 }

@@ -1,7 +1,9 @@
 import axios from 'axios'
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api'
+// Base API configuration
+const API_BASE_URL = 'http://localhost:5000/api'
 
+// Create axios instance with default config
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -9,17 +11,53 @@ const api = axios.create({
   }
 })
 
-// Add token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+// Request interceptor - add auth token if available
+api.interceptors.request.use(
+  (config) => {
+    const user = localStorage.getItem('user')
+    if (user) {
+      const userData = JSON.parse(user)
+      if (userData.token) {
+        config.headers.Authorization = `Bearer ${userData.token}`
+      }
+    }
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
   }
-  return config
-})
+)
 
-export default {
-  getPolicies: () => api.get('/policies').then(res => res.data),
-  getClaims: () => api.get('/claims').then(res => res.data),
-  getAdminStats: () => api.get('/admin/stats').then(res => res.data)
-}
+// Response interceptor - handle errors globally
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error('API Error:', error)
+    
+    // Handle common errors
+    if (error.response) {
+      switch (error.response.status) {
+        case 401:
+          console.error('Unauthorized access - please login')
+          break
+        case 403:
+          console.error('Access forbidden')
+          break
+        case 404:
+          console.error('Resource not found')
+          break
+        case 500:
+          console.error('Server error - please try again later')
+          break
+        default:
+          console.error('Unable to fetch data. Please try again later')
+      }
+    } else if (error.request) {
+      console.error('Network error - unable to reach server')
+    }
+    
+    return Promise.reject(error)
+  }
+)
+
+export default api
