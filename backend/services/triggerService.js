@@ -8,14 +8,15 @@ const checkWeatherTriggers = async (policies, weatherData) => {
   const triggeredClaims = []
 
   for (const policy of policies) {
-    if (weatherData.weather[0].main.toLowerCase() === 'rain' &&
-        weatherData.rain && weatherData.rain['1h'] > 10) {
+    const weatherMain = weatherData.weather[0].main.toLowerCase()
+
+    if (weatherMain === 'rain' && weatherData.rain && weatherData.rain['1h'] > 10) {
       // Heavy rain trigger
       const existingClaim = await Claim.findOne({
         where: {
           userId: policy.userId,
-          description: { [Op.iLike]: '%Heavy rain%' },
-          submittedAt: { [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Last 24 hours
+          description: { [Op.like]: '%Heavy rain%' },
+          submittedAt: { [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000) }
         }
       })
 
@@ -34,7 +35,7 @@ const checkWeatherTriggers = async (policies, weatherData) => {
       const existingClaim = await Claim.findOne({
         where: {
           userId: policy.userId,
-          description: { [Op.iLike]: '%Thunderstorm%' },
+          description: { [Op.like]: '%Thunderstorm%' },
           submittedAt: { [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000) }
         }
       })
@@ -69,12 +70,13 @@ const processAutomaticClaims = async () => {
           const triggeredClaims = await checkWeatherTriggers([policy], weatherData)
 
           for (const triggeredClaim of triggeredClaims) {
+            // FIX: use correct field names userId and policyId (not user/policy)
             await Claim.create({
-              user: triggeredClaim.userId,
-              policy: triggeredClaim.policyId,
+              userId: triggeredClaim.userId,
+              policyId: triggeredClaim.policyId,
               amount: triggeredClaim.amount,
               description: triggeredClaim.reason,
-              status: 'approved' // Auto-approved for weather triggers
+              status: 'approved'
             })
 
             console.log(`Automatic claim created for user ${triggeredClaim.userId}: ${triggeredClaim.reason}`)

@@ -1,47 +1,49 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { loginUser } from '../services/authService'
 import '../styles/dashboard.css'
 
-/**
- * Login Page Component
- * Handles user authentication
- */
 const Login = () => {
   const navigate = useNavigate()
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  })
+  const location = useLocation()
+  const from = location.state?.from?.pathname || null
+  const [formData, setFormData] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
-    setError('') // Clear error on input change
+    setFormData({ ...formData, [e.target.name]: e.target.value })
+    setError('')
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
-    // Basic validation
+
     if (!formData.email || !formData.password) {
       setError('Please fill in all fields')
       return
     }
 
     try {
-      // Mock API call - replace with actual login endpoint
-      console.log('Logging in with:', formData)
-      
-      // Simulate successful login
-      localStorage.setItem('user', JSON.stringify({ email: formData.email }))
-      alert('Login successful!')
-      navigate('/dashboard')
+      setLoading(true)
+      // FIX: actually call the real API instead of mocking it
+      const data = await loginUser(formData.email, formData.password)
+
+      // Save full user object including token to localStorage
+      localStorage.setItem('user', JSON.stringify(data))
+
+      // Redirect back to where they came from, or role-based default
+      if (from) {
+        navigate(from)
+      } else if (data.role === 'admin') {
+        navigate('/admin')
+      } else {
+        navigate('/dashboard')
+      }
     } catch (err) {
-      setError('Unable to fetch data. Please try again later')
+      setError(err.response?.data?.message || 'Invalid email or password')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -49,9 +51,9 @@ const Login = () => {
     <div className="auth-container">
       <div className="auth-card">
         <h2>Login to GigShield AI</h2>
-        
+
         {error && <div className="error-message">{error}</div>}
-        
+
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
             <label>Email</label>
@@ -64,7 +66,7 @@ const Login = () => {
               required
             />
           </div>
-          
+
           <div className="form-group">
             <label>Password</label>
             <input
@@ -76,12 +78,17 @@ const Login = () => {
               required
             />
           </div>
-          
-          <button type="submit" className="submit-btn">Login</button>
+
+          <button type="submit" className="submit-btn" disabled={loading}>
+            {loading ? 'Logging in...' : 'Login'}
+          </button>
         </form>
-        
+
         <p className="auth-link">
           Don't have an account? <Link to="/register">Register here</Link>
+        </p>
+        <p className="auth-link">
+          <Link to="/forgot-password">Forgot your password?</Link>
         </p>
       </div>
     </div>

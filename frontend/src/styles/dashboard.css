@@ -827,3 +827,166 @@ button {
     width: 100%;
   }
 }
+
+/* ========================================
+   PASSWORD RESET ADDITIONS
+   Append these to the bottom of dashboard.css
+======================================== */
+
+.auth-subtitle {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.success-message {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  text-align: center;
+  font-weight: 500;
+}
+
+.reset-token-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.token-label {
+  font-weight: 600;
+  color: #2c3e50;
+  margin-top: 0.5rem;
+}
+
+.token-display {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  word-break: break-all;
+}
+
+.token-display code {
+  flex: 1;
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: #333;
+}
+
+.copy-btn {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 0.3rem 0.75rem;
+  border-radius: 5px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.copy-btn:hover {
+  background: #5a6fd6;
+}
+
+.token-note {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+
+/* ========================================
+   PROFILE BANNER & LINK BUTTON
+   Append these to the bottom of dashboard.css
+======================================== */
+
+.profile-banner {
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 8px;
+  padding: 0.75rem 1.25rem;
+  margin-bottom: 1.5rem;
+  font-size: 14px;
+  color: #5d4037;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: #667eea;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.link-btn:hover {
+  color: #5a6fd6;
+}
+
+
+
+/* ========================================
+   WEATHER CARD
+   Append to bottom of dashboard.css
+======================================== */
+
+.weather-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 1.5rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  color: white;
+}
+
+.weather-icon {
+  font-size: 3.5rem;
+  flex-shrink: 0;
+}
+
+.weather-details {
+  flex: 1;
+}
+
+.weather-details h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  opacity: 0.9;
+}
+
+.weather-condition {
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.weather-stats {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.weather-alert {
+  margin-top: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+}

@@ -11,10 +11,7 @@ const Policy = sequelize.define('Policy', {
   userId: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    references: {
-      model: User,
-      key: 'id'
-    }
+    references: { model: User, key: 'id' }
   },
   type: {
     type: DataTypes.STRING,
@@ -36,8 +33,9 @@ const Policy = sequelize.define('Policy', {
     type: DataTypes.DATE,
     allowNull: false
   },
+  // FIX: added 'paused' as a valid status
   status: {
-    type: DataTypes.ENUM('active', 'expired', 'cancelled'),
+    type: DataTypes.ENUM('active', 'paused', 'expired', 'cancelled'),
     defaultValue: 'active'
   }
 }, {
@@ -46,7 +44,6 @@ const Policy = sequelize.define('Policy', {
   updatedAt: 'updatedAt'
 })
 
-// Define associations
 Policy.belongsTo(User, { foreignKey: 'userId', as: 'user' })
 User.hasMany(Policy, { foreignKey: 'userId', as: 'policies' })
 

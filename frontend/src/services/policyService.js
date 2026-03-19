@@ -1,10 +1,5 @@
 import api from './api'
 
-/**
- * Policy Service
- * Handles fetching and managing insurance policies
- */
-
 // Get all policies for current user
 export const getPolicies = async () => {
   try {
@@ -34,6 +29,17 @@ export const getPolicyById = async (policyId) => {
     return response.data
   } catch (error) {
     console.error('Error fetching policy:', error)
+    throw error
+  }
+}
+
+// Update policy status (activate, pause, cancel)
+export const updatePolicyStatus = async (policyId, status) => {
+  try {
+    const response = await api.patch(`/policies/${policyId}/status`, { status })
+    return response.data
+  } catch (error) {
+    console.error('Error updating policy status:', error)
     throw error
   }
 }

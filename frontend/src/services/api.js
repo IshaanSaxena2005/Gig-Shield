@@ -1,7 +1,7 @@
 import axios from 'axios'
 
-// Base API configuration
-const API_BASE_URL = 'http://localhost:5000/api'
+// Base API configuration — must match PORT in your .env (5001)
+const API_BASE_URL = 'http://localhost:5001/api'
 
 // Create axios instance with default config
 const api = axios.create({
@@ -33,8 +33,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     console.error('API Error:', error)
-    
-    // Handle common errors
+
     if (error.response) {
       switch (error.response.status) {
         case 401:
@@ -55,7 +54,7 @@ api.interceptors.response.use(
     } else if (error.request) {
       console.error('Network error - unable to reach server')
     }
-    
+
     return Promise.reject(error)
   }
 )

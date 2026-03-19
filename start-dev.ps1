@@ -16,7 +16,7 @@ This script will:
 Both servers will run in separate PowerShell jobs so you can stop them using Ctrl+C.
 #>
 
-function Ensure-NodeInstalled {
+function Test-NodeInstalled {
     if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
         Write-Error "Node.js is not installed or not in PATH. Please install it from https://nodejs.org/"
         exit 1
@@ -38,7 +38,7 @@ function Start-Project {
     Push-Location $Path
 
     Write-Host "Installing dependencies in $Path..." -ForegroundColor Yellow
-    iex $InstallCmd
+    Invoke-Expression iex $InstallCmd
 
     Write-Host "Starting dev server in $Path..." -ForegroundColor Green
     Start-Job -Name "$(Split-Path $Path -Leaf)" -ScriptBlock {

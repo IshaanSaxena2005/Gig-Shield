@@ -6,12 +6,12 @@ import Register from './pages/Register'
 import WorkerDashboard from './pages/WorkerDashboard'
 import PolicyPage from './pages/PolicyPage'
 import AdminDashboard from './pages/AdminDashboard'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
+import ProfilePage from './pages/ProfilePage'
+import ProtectedRoute from './components/ProtectedRoute'
 import './styles/dashboard.css'
 
-/**
- * Main App Component
- * Sets up routing for all pages
- */
 function App() {
   return (
     <Router>
@@ -20,11 +20,14 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+
         {/* Protected Routes */}
         <Route path="/dashboard" element={<WorkerDashboard />} />
         <Route path="/policy" element={<PolicyPage />} />
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Routes>
     </Router>
   )

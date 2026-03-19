@@ -23,9 +23,8 @@ exports.getPolicyById = async (req, res) => {
       return res.status(404).json({ message: 'Policy not found' })
     }
 
-    // Check if user owns the policy or is admin
     if (policy.userId !== req.user.id && req.user.role !== 'admin') {
-      return res.status(401).json({ message: 'Not authorized' })
+      return res.status(403).json({ message: 'Not authorized' })
     }
 
     res.json(policy)
@@ -38,24 +37,30 @@ exports.createPolicy = async (req, res) => {
   try {
     const { type, coverage, occupation, location } = req.body
 
-    // Get risk zone data
-    const riskZone = await RiskZone.findOne({ where: { location } })
+    if (!type || !coverage || !occupation || !location) {
+      return res.status(400).json({ message: 'type, coverage, occupation and location are required' })
+    }
 
-    // Get weather data for risk assessment
+    // Check if user already has an active policy
+    const existingPolicy = await Policy.findOne({
+      where: { userId: req.user.id, status: 'active' }
+    })
+    if (existingPolicy) {
+      return res.status(400).json({ message: 'You already have an active policy' })
+    }
+
+    const riskZone = await RiskZone.findOne({ where: { location } })
     const weatherData = await getWeatherData(location)
 
-    // Calculate risk factors
     const riskFactors = {
       location: riskZone ? riskZone.riskLevel : 'medium',
       weatherRisk: weatherData ? (weatherData.weather[0].main.toLowerCase() === 'rain' ? 0.8 : 0.3) : 0.5,
       occupation: occupation.toLowerCase()
     }
 
-    // Calculate premium
-    const basePremium = 50 // Base weekly premium
+    const basePremium = 50
     const calculatedPremium = calculatePremium(basePremium, riskFactors)
 
-    // Calculate end date (1 year from now)
     const endDate = new Date()
     endDate.setFullYear(endDate.getFullYear() + 1)
 
@@ -73,6 +78,32 @@ exports.createPolicy = async (req, res) => {
   }
 }
 
+// NEW: allows the policy owner to activate, pause or cancel their own policy
+exports.updatePolicyStatus = async (req, res) => {
+  try {
+    const policy = await Policy.findByPk(req.params.id)
+
+    if (!policy) {
+      return res.status(404).json({ message: 'Policy not found' })
+    }
+
+    if (policy.userId !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' })
+    }
+
+    const { status } = req.body
+    const allowed = ['active', 'paused', 'cancelled']
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ message: `Status must be one of: ${allowed.join(', ')}` })
+    }
+
+    await policy.update({ status })
+    res.json(policy)
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+}
+
 exports.updatePolicy = async (req, res) => {
   try {
     const policy = await Policy.findByPk(req.params.id)
@@ -81,12 +112,13 @@ exports.updatePolicy = async (req, res) => {
       return res.status(404).json({ message: 'Policy not found' })
     }
 
-    // Only admin can update policies
     if (req.user.role !== 'admin') {
-      return res.status(401).json({ message: 'Not authorized' })
+      return res.status(403).json({ message: 'Not authorized' })
     }
 
-    await policy.update(req.body)
+    const { status, premium, coverage } = req.body
+    await policy.update({ status, premium, coverage })
+
     const updatedPolicy = await Policy.findByPk(req.params.id, {
       include: [{ model: User, as: 'user', attributes: ['name', 'email'] }]
     })

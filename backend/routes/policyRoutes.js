@@ -4,6 +4,7 @@ const {
   getPolicyById,
   createPolicy,
   updatePolicy,
+  updatePolicyStatus,
   getAllPolicies
 } = require('../controllers/policyController')
 const { protect, admin } = require('../middleware/authMiddleware')
@@ -14,6 +15,7 @@ router.get('/', protect, getPolicies)
 router.get('/all', protect, admin, getAllPolicies)
 router.get('/:id', protect, getPolicyById)
 router.post('/', protect, createPolicy)
-router.put('/:id', protect, admin, updatePolicy)
+router.patch('/:id/status', protect, updatePolicyStatus) // user can update their own status
+router.put('/:id', protect, admin, updatePolicy)         // admin full update
 
 module.exports = router

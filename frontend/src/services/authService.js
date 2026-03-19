@@ -1,10 +1,5 @@
 import api from './api'
 
-/**
- * Authentication Service
- * Handles user login, registration and logout
- */
-
 // Login user
 export const loginUser = async (email, password) => {
   try {
@@ -36,11 +31,6 @@ export const getUserProfile = async () => {
     console.error('Profile fetch error:', error)
     throw error
   }
-}
-
-// Logout user
-export const logoutUser = () => {
-  localStorage.removeItem('user')
 }
 
 // Logout user
