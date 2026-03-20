@@ -1,281 +1,307 @@
-# GigShield AI - AI Powered Parametric Insurance for Gig Workers
+# Gig-Shield
 
-A comprehensive React frontend platform that protects delivery partners (Zomato, Swiggy, Zepto, Amazon etc.) from income loss caused by external disruptions like heavy rain, extreme heat, floods, pollution or curfews.
+Gig-Shield is a prototype insurance platform for gig workers. It combines a React frontend, an Express API, and a small Python AI service to model a parametric insurance workflow where disruptions such as weather events can affect coverage, claims, and payouts.
 
-## 🚀 Features
+This repository is currently best understood as a hackathon-style prototype. The core frontend and backend are usable for local development, while parts of the documentation and AI integration are still catching up with the codebase.
 
-### For Delivery Partners (Workers)
+## What Is In This Repo
 
-- **Worker Dashboard** - View insurance summary, earnings protection, and claims history
-- **Policy Management** - Activate, pause, or cancel insurance policies
-- **Automatic Claims** - Parametric triggers automatically process claims during disruptions
-- **Real-time Alerts** - Instant notifications when claims are approved and paid
+- `frontend/`: React 19 + Vite client application
+- `backend/`: Express API with Sequelize models and authentication
+- `ai-engine/`: Flask microservice for risk prediction and fraud-related endpoints
+- `docs/`: supporting notes and architecture sketches
+- Root Vite files: present, but the main app runtime appears to live under `frontend/` and `backend/`
 
-### For Admins
-
-- **Platform Metrics** - Track workers insured, active policies, premiums, and payouts
-- **Claims Overview** - Monitor daily, weekly, and total claims
-- **Fraud Detection** - AI-powered fraud alerts for suspicious claims
-- **Risk Zones** - Geographic risk assessment visualization
-
-### Key Characteristics
-
-- ✅ Loss of income insurance ONLY (no health/accident/life/vehicle)
-- ✅ Weekly-based insurance pricing
-- ✅ Automatic claims through parametric events
-- ✅ Clean, minimal, professional UI
-- ✅ Responsive design for all devices
-
-## 🛠️ Tech Stack
+## Current Stack
 
 ### Frontend
 
-- **React 19** with Vite
-- **React Router DOM** for routing
-- **Axios** for API calls
-- **CSS3** with modern styling
-- **Functional Components** with Hooks
+- React 19
+- Vite
+- React Router
+- Axios
 
 ### Backend
 
-- **Node.js** with Express.js
-- **MySQL** with Sequelize ORM
-- **JWT** for authentication
-- **bcryptjs** for password hashing
+- Node.js
+- Express
+- Sequelize
+- JWT authentication
+- bcryptjs
+- Stripe SDK
 
-### AI Engine
+### Database
 
-- **Python** with scikit-learn
-- **pandas** for data processing
-- **Machine Learning** for risk assessment
+- SQLite via Sequelize
 
-### External Services
+The backend currently runs against SQLite in `backend/database.sqlite` through [backend/config/db.js](C:\Users\AKASHDEEP\OneDrive\Documents\GitHub\Gig-Shield\backend\config\db.js). Older references to MySQL or MongoDB in the repo do not reflect the current implementation.
 
-- **OpenWeatherMap API** for weather data
-- **Stripe** for payments
+### AI Service
 
-## 📁 Project Structure
+- Python
+- Flask
+- pandas
+- joblib / scikit-learn style model loading
 
+## Main Application Areas
+
+### Frontend pages
+
+- Landing page
+- Login and registration
+- Forgot/reset password
+- Worker dashboard
+- Policy management
+- Admin dashboard
+- Profile page
+
+Primary frontend entry points:
+
+- [frontend/src/main.jsx](C:\Users\AKASHDEEP\OneDrive\Documents\GitHub\Gig-Shield\frontend\src\main.jsx)
+- [frontend/src/App.jsx](C:\Users\AKASHDEEP\OneDrive\Documents\GitHub\Gig-Shield\frontend\src\App.jsx)
+
+### Backend capabilities
+
+- User authentication and JWT issuance
+- Password reset flow
+- Policy creation and management
+- Claim submission
+- Rule-based fraud detection
+- Weather-based automatic claim processing
+- Admin reporting endpoints
+- User dashboard/profile endpoints
+
+Primary backend entry point:
+
+- [backend/server.js](C:\Users\AKASHDEEP\OneDrive\Documents\GitHub\Gig-Shield\backend\server.js)
+
+### AI engine endpoints
+
+- `POST /predict-risk`
+- `POST /detect-fraud`
+- `GET /health`
+
+Primary AI entry point:
+
+- [ai-engine/app.py](C:\Users\AKASHDEEP\OneDrive\Documents\GitHub\Gig-Shield\ai-engine\app.py)
+
+## Project Structure
+
+```text
+Gig-Shield/
+|-- frontend/
+|   |-- src/
+|   |   |-- components/
+|   |   |-- pages/
+|   |   |-- services/
+|   |   |-- styles/
+|   |   |-- App.jsx
+|   |   `-- main.jsx
+|   `-- package.json
+|-- backend/
+|   |-- config/
+|   |-- controllers/
+|   |-- middleware/
+|   |-- models/
+|   |-- routes/
+|   |-- services/
+|   |-- utils/
+|   |-- server.js
+|   `-- package.json
+|-- ai-engine/
+|   |-- models/
+|   |-- app.py
+|   `-- risk_prediction.py
+|-- docs/
+`-- README.md
 ```
-src/
-├── components/
-│   ├── Navbar.jsx          # Navigation bar component
-│   ├── WorkerCard.jsx      # Worker insurance summary card
-│   ├── ClaimAlert.jsx      # Claim notification component
-│   └── StatCard.jsx        # Statistics card component
-├── pages/
-│   ├── Home.jsx            # Landing page
-│   ├── Login.jsx           # User login page
-│   ├── Register.jsx        # User registration page
-│   ├── WorkerDashboard.jsx # Worker dashboard
-│   ├── PolicyPage.jsx      # Policy management page
-│   └── AdminDashboard.jsx  # Admin dashboard
-├── services/
-│   ├── api.js              # Axios instance configuration
-│   ├── authService.js      # Authentication functions
-│   └── claimService.js     # Claims management functions
-├── styles/
-│   └── dashboard.css       # Global styles
-├── App.jsx                 # Main app component with routing
-└── main.jsx                # Entry point
-```
 
-## 🚀 Getting Started
+## Local Development
 
 ### Prerequisites
 
-- Node.js (v16 or higher)
-- npm or yarn
-- MySQL Server (v8.0 or higher)
-- Python 3.8+ (for AI engine)
+- Node.js 18+ recommended
+- npm
+- Python 3.8+
 
-### Database Setup
+### Environment variables
 
-1. Install and start MySQL Server
-2. Create the database:
-   - Open MySQL Workbench or command line
-   - Run: `CREATE DATABASE gig_shield;`
-   - Or use the provided `database-setup.sql` file
+Create a root `.env` file for the backend and AI-related settings. Based on the current code, these values are expected or strongly recommended:
 
-3. Update `.env` file with your MySQL credentials:
-   ```
-   DB_USER=your_mysql_username
-   DB_PASSWORD=your_mysql_password
-   ```
-
-### Installation
-
-1. Install backend dependencies:
-
-```bash
-cd backend
-npm install
+```env
+JWT_SECRET=replace-with-a-real-secret
+STRIPE_SECRET_KEY=replace-with-a-real-key
+OPENWEATHER_API_KEY=replace-with-a-real-key
+FRONTEND_URL=http://localhost:5173
+PORT=5000
+AI_ENGINE_PORT=5002
 ```
 
-2. Install frontend dependencies:
+Notes:
+
+- The backend loads environment variables from `../.env` relative to `backend/server.js`.
+- `PORT` defaults to `5000`.
+- The AI engine defaults to `5002`.
+- The frontend currently hardcodes `http://localhost:5001/api` in [frontend/src/services/api.js](C:\Users\AKASHDEEP\OneDrive\Documents\GitHub\Gig-Shield\frontend\src\services\api.js), so you will either need to change that file or run the backend on port `5001` to match it.
+
+### Install dependencies
+
+Frontend:
 
 ```bash
 cd frontend
 npm install
 ```
 
-3. Start the backend server:
+Backend:
 
 ```bash
 cd backend
-npm start
+npm install
 ```
 
-4. Start the frontend development server:
+AI engine:
+
+```bash
+cd ai-engine
+pip install flask joblib scikit-learn pandas
+```
+
+### Run the services
+
+Start the backend:
+
+```bash
+cd backend
+npm run dev
+```
+
+Start the frontend:
 
 ```bash
 cd frontend
-npm start
+npm run dev
 ```
 
-The application will be available at:
+Start the AI engine:
 
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:5000
-  npm run dev
-
+```bash
+cd ai-engine
+python app.py
 ```
 
-3. Open browser and navigate to:
-```
+Expected local URLs:
 
-http://localhost:5173
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:5000` by default
+- AI engine: `http://localhost:5002` by default
 
-```
+## Available Scripts
 
-## 📱 Available Routes
+### `frontend/package.json`
 
-- `/` - Landing page with features and how it works
-- `/login` - User login
-- `/register` - New user registration
-- `/dashboard` - Worker dashboard (protected)
-- `/policy` - Policy management (protected)
-- `/admin` - Admin dashboard (protected)
+- `npm run dev`
+- `npm run build`
+- `npm run preview`
 
-## 🎨 Design Features
+### `backend/package.json`
 
-### Color Scheme
-- Primary gradient: Purple to violet (#667eea to #764ba2)
-- Success states: Green (#28a745)
-- Warning states: Yellow/Orange (#ffc107)
-- Danger states: Red (#dc3545)
+- `npm start`
+- `npm run dev`
 
-### UI Components
-- **Cards** - Clean white cards with subtle shadows
-- **Tables** - Responsive data tables with hover effects
-- **Badges** - Color-coded status indicators
-- **Buttons** - Gradient buttons with hover animations
-- **Alerts** - Slide-in notifications
+There are currently no test or lint scripts defined in the main frontend/backend package files.
 
-### Responsive Design
-- Mobile-first approach
-- Breakpoints at 768px
-- Flexible grid layouts
-- Touch-friendly buttons
+## Data Flow Overview
 
-## 🔌 API Integration (Mock)
+1. A user authenticates through the backend and receives a JWT.
+2. The frontend stores the authenticated user in local storage and attaches the bearer token to API requests.
+3. Policies are created and priced through backend controllers and utility logic.
+4. Weather data is used by backend services to evaluate disruption conditions.
+5. Automatic claim processing runs on startup and then every hour in the backend.
+6. Manual claims are checked against simple fraud rules.
+7. Admin endpoints aggregate stats, alerts, and zone-level summaries.
 
-The application uses mocked services for prototype purposes:
+## Current Limitations
 
-### Base URL
-```
+These are important repo realities worth knowing before you build on top of this project:
 
-http://localhost:5000/api
+- The README and some docs were previously out of date; this file now reflects the current codebase more closely.
+- The backend uses SQLite even though older files still mention MySQL or MongoDB.
+- The frontend imports a `ProtectedRoute` component, but routes in [frontend/src/App.jsx](C:\Users\AKASHDEEP\OneDrive\Documents\GitHub\Gig-Shield\frontend\src\App.jsx) are not currently wrapped with it.
+- The frontend API base URL and backend default port do not currently match.
+- The AI service exists, but the Node backend does not appear to fully integrate with it yet.
+- `ai-engine/models/` currently contains `risk_model.pkl`; `risk_prediction.py` also expects `location_encoder.pkl`.
+- Automatic claims processing runs immediately on backend startup and then hourly, which means local development may depend on external weather API access.
+- No automated tests or linting setup were found in the primary app packages.
 
-```
+## Useful Files
 
-### Services
-- **authService.js** - Login, register, logout
-- **claimService.js** - Get claims, submit claims
-- **api.js** - Axios instance with interceptors
+- [frontend/src/services/api.js](C:\Users\AKASHDEEP\OneDrive\Documents\GitHub\Gig-Shield\frontend\src\services\api.js)
+- [backend/config/db.js](C:\Users\AKASHDEEP\OneDrive\Documents\GitHub\Gig-Shield\backend\config\db.js)
+- [backend/controllers/authController.js](C:\Users\AKASHDEEP\OneDrive\Documents\GitHub\Gig-Shield\backend\controllers\authController.js)
+- [backend/controllers/policyController.js](C:\Users\AKASHDEEP\OneDrive\Documents\GitHub\Gig-Shield\backend\controllers\policyController.js)
+- [backend/controllers/claimController.js](C:\Users\AKASHDEEP\OneDrive\Documents\GitHub\Gig-Shield\backend\controllers\claimController.js)
+- [backend/services/triggerService.js](C:\Users\AKASHDEEP\OneDrive\Documents\GitHub\Gig-Shield\backend\services\triggerService.js)
+- [ai-engine/app.py](C:\Users\AKASHDEEP\OneDrive\Documents\GitHub\Gig-Shield\ai-engine\app.py)
 
-To connect to real backend:
-1. Update base URL in `src/services/api.js`
-2. Uncomment actual API calls in service files
-3. Remove mock data responses
+## Status
 
-## 📊 Sample Data
+Gig-Shield is a solid prototype with a readable separation between UI, API, and ML service boundaries. The main app path is in place, but there are still a few integration and documentation gaps to resolve before it would feel production-ready.
 
-The application includes realistic mock data for:
-- Worker profiles (name, platform, location)
-- Insurance policies (premiums, coverage limits)
-- Claims history (dates, disruptions, amounts)
-- Admin statistics (metrics, fraud alerts, risk zones)
+## Adversarial Defense & Anti-Spoofing Strategy
 
-## 🎯 Use Cases
+The first market crash changed the way we think about this product. In that scenario, a coordinated group of delivery workers used GPS-spoofing tools to fake their presence inside a severe weather zone and trigger false parametric payouts at scale. That means location alone can no longer be treated as truth. Our defense strategy is to move from single-point verification to behavior-based verification, where a claim is judged through a wider pattern of signals instead of one GPS reading.
 
-### Example Scenarios
+### 1. The Differentiation
 
-1. **Heavy Rain Disruption**
-   - Weather API detects heavy rainfall in worker's area
-   - System automatically triggers insurance claim
-   - Worker receives alert: "Disruption detected in your area"
-   - ₹150 credited to account instantly
+Our AI/ML architecture would distinguish a genuinely stranded worker from a spoofing actor by looking for consistency between location, movement, platform activity, device behavior, and surrounding event data. A real stranded worker usually leaves behind a believable operational story: they were active before the disruption, their movement pattern made sense for a delivery route, the weather event matches the timing of the interruption, and their digital behavior remains natural even if the network is unstable. A spoofing actor may be able to fake a coordinate, but it is much harder to fake a full chain of believable context.
 
-2. **Flood Event**
-   - Flood warning issued for specific zone
-   - All workers in that zone automatically covered
-   - Claims processed without manual intervention
-   - Direct bank transfer within minutes
+Instead of asking, "Is this worker inside the red zone?", the model asks a stronger question: "Does this claim look like the behavior of a real worker who was genuinely affected by this event?" That shift is the core of our anti-spoofing design.
 
-3. **Extreme Heat Wave**
-   - Temperature exceeds threshold (e.g., 45°C)
-   - Parametric trigger activates coverage
-   - Workers compensated for lost income
+We would score each claim on a trust spectrum using multiple layers:
 
-## 🔐 Security Notes
+- Event authenticity: did a verified weather or emergency event actually occur in that place and time?
+- Activity continuity: was the worker genuinely active before the disruption and then interrupted in a realistic way?
+- Movement realism: does the route history look like normal delivery movement or like synthetic jumps and impossible travel?
+- Device integrity: are there signs of mock-location tools, rooted devices, emulator patterns, or sudden device-environment changes?
+- Network consistency: do IP region, carrier behavior, and signal-loss patterns roughly match the claimed situation?
+- Group anomaly detection: is this claim part of a suspicious cluster of very similar claims from the same area, channel, or time window?
 
-For production deployment:
-- Implement JWT authentication
-- Add protected route guards
-- Secure API endpoints
-- Validate all user inputs
-- Implement CSRF protection
-- Use HTTPS in production
+In simple terms, a real worker tends to produce messy but believable signals. A fraud ring tends to produce clean, repeated, and coordinated manipulation patterns.
 
-## 📝 Future Enhancements
+### 2. The Data
 
-- [ ] Real-time weather API integration
-- [ ] GPS-based disruption detection
-- [ ] Payment gateway integration
-- [ ] Multi-language support
-- [ ] Push notifications
-- [ ] Mobile app version
-- [ ] Analytics dashboard
-- [ ] Export reports (PDF/Excel)
+To detect a coordinated fraud ring, our system would analyze more than raw latitude and longitude. The goal is to combine environmental, behavioral, device, and network evidence into one fraud-risk view.
 
-## 👥 Target Users
+Important data points would include:
 
-Delivery partners working with:
-- Zomato
-- Swiggy
-- Zepto
-- Amazon
-- Flipkart
-- Other gig platforms
+- Route history over time, not just a final pinned point
+- Speed, acceleration, stoppage pattern, and direction changes
+- Timestamp consistency between claimed disruption, recent delivery activity, and app usage
+- Delivery-platform signals such as order acceptance, pickup attempts, cancellations, and session activity
+- Device telemetry such as mock-location detection, developer mode indicators, rooted-device signals, emulator signatures, sensor availability, and sudden GPS-source switching
+- Network clues such as IP geolocation, carrier consistency, SIM change patterns, and unusual VPN or proxy usage
+- Weather severity data mapped to time and micro-location, including whether nearby workers show similar but not identical disruption patterns
+- Claim frequency by worker, device, phone number, payout account, and locality
+- Shared-fingerprint signals that may reveal collusion, such as many claims tied to the same device family, bank destination, IP cluster, or repeated timing pattern
+- Historical reliability score for each worker based on prior genuine activity and prior flagged behavior
 
-## 💡 What Makes This Special
+This matters because fraud at this level is not usually a single fake claim. It is a coordinated pattern. A ring may use different identities, but clusters often still appear through repeated devices, similar timing, identical movement profiles, common payout paths, or synchronized filing behavior. Our system is designed to spot both the suspicious individual claim and the wider group signature behind it.
 
-1. **Parametric Insurance** - No claims paperwork, automatic payouts
-2. **Weekly Pricing** - Flexible premiums based on real-time risk
-3. **AI-Powered** - Smart risk assessment and fraud detection
-4. **Income Protection** - Focused solely on loss of earnings
-5. **Instant Payouts** - Money credited within minutes
+### 3. The UX Balance
 
-## 📄 License
+The biggest risk in anti-fraud design is overcorrecting and punishing honest workers, especially during real storms when networks are unstable and location quality gets worse. Our workflow therefore avoids turning every suspicious signal into an automatic rejection.
 
-This is a hackathon project prototype.
+We use a three-lane claim decision flow:
 
-## 🙏 Acknowledgments
+- Low-risk claims: auto-approve quickly when signals are consistent
+- Medium-risk claims: place into a soft-review state and request lightweight confirmation
+- High-risk claims: hold payout temporarily and escalate for deeper fraud review
 
-Built for the AI Powered Parametric Insurance Hackathon.
+For flagged claims, the user experience should stay fair and respectful. A worker should not be treated like a fraudster just because their signal dropped in bad weather. If a claim is flagged, the system should explain that additional verification is needed due to inconsistent telemetry, not accuse the worker of misconduct. We would ask for the least burdensome proof first, such as recent order timeline confirmation, passive device re-check, or a short in-app verification step once connectivity stabilizes.
 
----
+We would also build in a "benefit of doubt" layer for genuine edge cases. For example, if severe weather is confirmed, the worker has a strong history, and only one signal is missing because of a temporary network drop, the claim should move into assisted verification rather than hard denial. The platform should slow down suspicious payouts, not block honest workers from support when they need it most.
 
-**GigShield AI** - Protecting gig workers across India 🇮🇳
-```
+### First Market Crash Response Summary
+
+The lesson from the first market crash is clear: parametric insurance cannot rely on GPS alone. Our response is a multi-signal trust architecture that looks at whether a claim is believable as a real-world event, not just whether a device reported a location. By combining behavior analytics, device trust checks, network context, event validation, and fraud-ring clustering, Gig-Shield becomes much harder to exploit through mass spoofing. At the same time, the workflow remains worker-sensitive by using soft review and progressive verification instead of blunt rejection. That gives us a system that is both more resilient against organized fraud and more humane toward honest gig workers.

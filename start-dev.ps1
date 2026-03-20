@@ -17,44 +17,52 @@ Both servers will run in separate PowerShell jobs so you can stop them using Ctr
 #>
 
 function Test-NodeInstalled {
-    if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-        Write-Error "Node.js is not installed or not in PATH. Please install it from https://nodejs.org/"
-        exit 1
-    }
-    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-        Write-Error "npm is not installed or not in PATH. Please ensure Node.js installation includes npm."
-        exit 1
-    }
+if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+Write-Error "Node.js is not installed or not in PATH."
+exit 1
+}
+if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+Write-Error "npm is not installed or not in PATH."
+exit 1
+}
 }
 
 function Start-Project {
-    param(
-        [string]$Path,
-        [string]$InstallCmd = 'npm install',
-        [string]$StartCmd = 'npm run dev'
-    )
+param(
+[string]$Path,
+[string]$InstallCmd = "npm install",
+[string]$StartCmd = "npm run dev"
+)
 
-    Write-Host "\n==> Preparing $Path..." -ForegroundColor Cyan
-    Push-Location $Path
+```
+Write-Host "`n==> Preparing $Path..." -ForegroundColor Cyan
+Push-Location $Path
 
-    Write-Host "Installing dependencies in $Path..." -ForegroundColor Yellow
-    Invoke-Expression iex $InstallCmd
+Write-Host "Installing dependencies..." -ForegroundColor Yellow
+Invoke-Expression $InstallCmd
 
-    Write-Host "Starting dev server in $Path..." -ForegroundColor Green
-    Start-Job -Name "$(Split-Path $Path -Leaf)" -ScriptBlock {
-        param($cmd)
-        Invoke-Expression $cmd
-    } -ArgumentList $StartCmd | Out-Null
+Write-Host "Starting dev server..." -ForegroundColor Green
+Start-Job -Name "$(Split-Path $Path -Leaf)" -ScriptBlock {
+    param($cmd, $workingDir)
+    Set-Location $workingDir
+    Invoke-Expression $cmd
+} -ArgumentList $StartCmd, $Path | Out-Null
 
-    Pop-Location
+Pop-Location
+```
+
 }
 
-Ensure-NodeInstalled
+# Check Node.js
 
-# Start backend and frontend in parallel
-Start-Project -Path "$(Join-Path $PSScriptRoot 'backend')"
-Start-Project -Path "$(Join-Path $PSScriptRoot 'frontend')"
+Test-NodeInstalled
 
-Write-Host "\nBoth backend and frontend have been started in background jobs." -ForegroundColor Green
-Write-Host "Use 'Get-Job' to view jobs and 'Receive-Job -Name <job> -Keep' to view output." -ForegroundColor Gray
-Write-Host "When finished, stop jobs by running: Stop-Job -Name backend,frontend" -ForegroundColor Gray
+# Start backend and frontend
+
+Start-Project -Path "$PSScriptRoot\backend"
+Start-Project -Path "$PSScriptRoot\frontend"
+
+Write-Host "`nBoth backend and frontend have been started!" -ForegroundColor Green
+Write-Host "Use 'Get-Job' to view jobs" -ForegroundColor Gray
+Write-Host "Use 'Receive-Job -Name backend -Keep' to see backend logs" -ForegroundColor Gray
+Write-Host "Stop using: Stop-Job -Name backend,frontend" -ForegroundColor Gray
