@@ -22,6 +22,7 @@
 ### Tech Stack
 
 **Frontend**
+
 - React 19 with modern hooks
 - Vite for blazing-fast development
 - React Router for navigation
@@ -29,6 +30,7 @@
 - Custom CSS with modern gradient themes
 
 **Backend**
+
 - Node.js + Express REST API
 - Sequelize ORM with SQLite
 - JWT authentication
@@ -36,6 +38,7 @@
 - Stripe integration for payments
 
 **AI Engine**
+
 - Python Flask microservice
 - Scikit-learn ML models
 - Pandas for data processing
@@ -43,27 +46,27 @@
 
 ### System Diagram
 
-```
 ┌─────────────────┐
-│   Frontend      │  Port 5173
-│  (React + Vite) │
+│ Frontend │ Port 5173
+│ (React + Vite) │
 └────────┬────────┘
-         │
-         ├──────────────────┐
-         │                  │
-         ▼                  ▼
-┌─────────────────┐  ┌─────────────────┐
-│   Backend API   │  │   AI Engine     │
-│ Port 5001       │  │  Port 5002      │
-│ (Node + Express)│  │ (Flask + ML)    │
-└────────┬────────┘  └─────────────────┘
-         │
-         ▼
+│
+├──────────────────┐
+│ │
+▼ ▼
+┌─────────────────┐ ┌─────────────────┐
+│ Backend API │ │ AI Engine │
+│ Port 5001 │ │ Port 5002 │
+│ (Node + Express)│ │ (Flask + ML) │
+└────────┬────────┘ └─────────────────┘
+│
+▼
 ┌─────────────────┐
-│   SQLite DB     │
-│  database.sqlite
+│ SQLite DB │
+│ database.sqlite
 └─────────────────┘
-```
+
+````
 
 ## 🚀 Quick Start
 
@@ -78,7 +81,7 @@
 ```bash
 git clone <repository-url>
 cd Gig-Shield-main
-```
+````
 
 ### 2. Environment Setup
 
@@ -101,18 +104,21 @@ AI_ENGINE_PORT=5002
 ### 3. Install Dependencies
 
 **Frontend:**
+
 ```bash
 cd frontend
 npm install
 ```
 
 **Backend:**
+
 ```bash
 cd backend
 npm install
 ```
 
 **AI Engine:**
+
 ```bash
 cd ai-engine
 pip install flask flask-cors scikit-learn pandas numpy joblib
@@ -123,24 +129,30 @@ pip install flask flask-cors scikit-learn pandas numpy joblib
 Open three terminal windows:
 
 **Terminal 1 - Frontend:**
+
 ```bash
 cd frontend
 npm run dev
 ```
+
 → Frontend runs on http://localhost:5173
 
 **Terminal 2 - Backend:**
+
 ```bash
 cd backend
 npm run dev
 ```
+
 → Backend API runs on http://localhost:5001
 
 **Terminal 3 - AI Engine:**
+
 ```bash
 cd ai-engine
 python app.py
 ```
+
 → AI Engine runs on http://localhost:5002
 
 ### 5. Access the Application
@@ -210,7 +222,7 @@ GigShield employs a **multi-signal trust architecture** to prevent fraud while m
 ### Three-Lane Claim Flow
 
 1. **Low-Risk** → Auto-approved instantly
-2. **Medium-Risk** → Soft review with lightweight verification  
+2. **Medium-Risk** → Soft review with lightweight verification
 3. **High-Risk** → Held for manual investigation
 
 This approach balances fraud prevention with fair treatment of honest workers during genuine disruptions.
