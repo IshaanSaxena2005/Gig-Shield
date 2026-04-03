@@ -1,0 +1,3 @@
+# This is a placeholder for the trained risk model pickle file
+# In a real implementation, this would be a binary pickle file
+# For now, this is just a text file indicating the model location
