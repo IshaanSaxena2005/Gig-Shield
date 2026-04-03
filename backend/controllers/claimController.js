@@ -1,6 +1,7 @@
 const Claim = require('../models/Claim')
 const Policy = require('../models/Policy')
 const { detectFraud } = require('../services/fraudDetection')
+const { getFraudAssessment } = require('../services/mlService')
 const { Op } = require('sequelize')
 
 exports.getClaims = async (req, res) => {
@@ -62,9 +63,17 @@ exports.createClaim = async (req, res) => {
 
     // Fraud detection
     const userClaims = await Claim.findAll({ where: { userId: req.user.id } })
+    const aiFraudAssessment = await getFraudAssessment({
+      amount: Number(amount),
+      policyCoverage: Number(policy.coverage),
+      claimCount30Days: userClaims.filter((claim) =>
+        new Date(claim.submittedAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      ).length
+    })
     const fraudCheck = detectFraud(
       { amount: Number(amount), description, policyCoverage: policy.coverage },
-      userClaims
+      userClaims,
+      aiFraudAssessment
     )
 
     // FIX: fraudulent → 'flagged' for review, clean → 'pending' (not auto-approved)
@@ -73,7 +82,11 @@ exports.createClaim = async (req, res) => {
       policyId,
       amount: Number(amount),
       description,
-      status: fraudCheck.isFraudulent ? 'flagged' : 'pending'
+      status: fraudCheck.isFraudulent ? 'flagged' : 'pending',
+      source: 'manual',
+      notes: fraudCheck.isFraudulent
+        ? `Soft review required: ${fraudCheck.reasons.join('; ')}`
+        : 'Awaiting standard review'
     })
 
     res.status(201).json({
@@ -99,6 +112,12 @@ exports.updateClaim = async (req, res) => {
 
     // FIX: whitelist only allowed fields — never spread req.body directly
     const { status, notes } = req.body
+    const allowedStatuses = ['pending', 'approved', 'rejected', 'flagged']
+
+    if (status && !allowedStatuses.includes(status)) {
+      return res.status(400).json({ message: `Status must be one of: ${allowedStatuses.join(', ')}` })
+    }
+
     await claim.update({ status, notes, processedAt: new Date() })
 
     const updatedClaim = await Claim.findByPk(req.params.id, {

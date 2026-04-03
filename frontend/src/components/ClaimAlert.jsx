@@ -1,18 +1,18 @@
 import React from 'react'
 import '../styles/dashboard.css'
 
-/**
- * ClaimAlert Component
- * Shows notification when a claim is processed and approved
- */
 const ClaimAlert = ({ title, message, amount }) => {
+  const amountLabel = typeof amount === 'number'
+    ? `Rs${amount} credited to your account`
+    : amount
+
   return (
     <div className="claim-alert">
-      <div className="alert-icon">✓</div>
+      <div className="alert-icon">OK</div>
       <div className="alert-content">
         <h4 className="alert-title">{title}</h4>
         <p className="alert-message">{message}</p>
-        {amount && <p className="alert-amount">₹{amount} credited to your account</p>}
+        {amount && <p className="alert-amount">{amountLabel}</p>}
       </div>
     </div>
   )

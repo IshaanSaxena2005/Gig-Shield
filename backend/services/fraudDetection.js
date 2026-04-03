@@ -1,5 +1,5 @@
 // Fraud detection based on claim patterns
-const detectFraud = (claimData, userHistory) => {
+const detectFraud = (claimData, userHistory, aiAssessment = null) => {
   let riskScore = 0
   const reasons = [] // FIX: collect only reasons that actually fired
 
@@ -28,8 +28,13 @@ const detectFraud = (claimData, userHistory) => {
     reasons.push('Weather mismatch: claim mentions rain but weather data does not confirm it')
   }
 
+  if (aiAssessment) {
+    riskScore += Math.round(Number(aiAssessment.riskScore || 0) * 0.35)
+    reasons.push(...(aiAssessment.reasons || []))
+  }
+
   return {
-    isFraudulent: riskScore > 50,
+    isFraudulent: aiAssessment ? (aiAssessment.isFraudulent || riskScore > 50) : riskScore > 50,
     riskScore,
     reasons // now only contains reasons for rules that actually triggered
   }

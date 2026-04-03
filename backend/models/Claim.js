@@ -34,8 +34,20 @@ const Claim = sequelize.define('Claim', {
     allowNull: false
   },
   status: {
-    type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+    type: DataTypes.ENUM('pending', 'approved', 'rejected', 'flagged'),
     defaultValue: 'pending'
+  },
+  source: {
+    type: DataTypes.ENUM('manual', 'automated'),
+    defaultValue: 'manual'
+  },
+  triggerType: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  notes: {
+    type: DataTypes.TEXT,
+    allowNull: true
   },
   submittedAt: {
     type: DataTypes.DATE,

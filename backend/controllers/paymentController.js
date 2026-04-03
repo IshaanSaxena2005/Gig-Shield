@@ -23,8 +23,25 @@ exports.processPayment = async (req, res) => {
     // Use the server-side premium value, not a client-provided amount
     const amount = policy.premium
 
+    const stripeKey = process.env.STRIPE_SECRET_KEY || ''
+    const isDemoMode = !stripeKey || stripeKey.includes('your-')
+
+    if (isDemoMode) {
+      await policy.update({
+        paymentStatus: 'paid',
+        lastPaymentAt: new Date()
+      })
+
+      return res.json({
+        mode: 'demo',
+        message: 'Demo payment completed successfully.',
+        amount,
+        paymentStatus: 'paid'
+      })
+    }
+
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Convert to cents
+      amount: Math.round(amount * 100),
       currency,
       payment_method_types: ['card'],
       metadata: {
@@ -34,7 +51,9 @@ exports.processPayment = async (req, res) => {
     })
 
     res.json({
-      clientSecret: paymentIntent.client_secret
+      mode: 'stripe',
+      clientSecret: paymentIntent.client_secret,
+      amount
     })
   } catch (error) {
     res.status(500).json({ message: error.message })

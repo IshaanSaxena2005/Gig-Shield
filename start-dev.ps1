@@ -1,68 +1,81 @@
 <#
-PowerShell helper script to start Gig-Shield backend + frontend simultaneously.
+PowerShell helper script to start the full Gig-Shield local stack.
 
 Usage:
   ./start-dev.ps1
 
-Prerequisites:
-- Node.js + npm must be installed and in PATH
-- MySQL Server must be running and database 'gig_shield' created
+What it starts:
+1) Express backend on port 5001
+2) React frontend on port 5173
+3) Flask AI engine on port 5002
 
-This script will:
-1) Install dependencies (if not already installed)
-2) Start the backend server (Express)
-3) Start the frontend dev server (Vite)
-
-Both servers will run in separate PowerShell jobs so you can stop them using Ctrl+C.
+Logs are written to:
+- backend-dev.log
+- frontend-dev.log
+- ai-engine-dev.log
 #>
 
-function Test-NodeInstalled {
-if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-Write-Error "Node.js is not installed or not in PATH."
-exit 1
-}
-if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-Write-Error "npm is not installed or not in PATH."
-exit 1
-}
-}
-
-function Start-Project {
 param(
-[string]$Path,
-[string]$InstallCmd = "npm install",
-[string]$StartCmd = "npm run dev"
+  [switch]$InstallDependencies
 )
 
-```
-Write-Host "`n==> Preparing $Path..." -ForegroundColor Cyan
-Push-Location $Path
+function Test-CommandAvailable {
+  param([string]$CommandName, [string]$Message)
 
-Write-Host "Installing dependencies..." -ForegroundColor Yellow
-Invoke-Expression $InstallCmd
-
-Write-Host "Starting dev server..." -ForegroundColor Green
-Start-Job -Name "$(Split-Path $Path -Leaf)" -ScriptBlock {
-    param($cmd, $workingDir)
-    Set-Location $workingDir
-    Invoke-Expression $cmd
-} -ArgumentList $StartCmd, $Path | Out-Null
-
-Pop-Location
-```
-
+  if (-not (Get-Command $CommandName -ErrorAction SilentlyContinue)) {
+    Write-Error $Message
+    exit 1
+  }
 }
 
-# Check Node.js
+function Start-ServiceWindow {
+  param(
+    [string]$Name,
+    [string]$WorkingDirectory,
+    [string]$Command,
+    [string]$LogFile
+  )
 
-Test-NodeInstalled
+  Write-Host "`n==> Starting $Name" -ForegroundColor Cyan
+  Start-Process powershell -ArgumentList @(
+    '-NoProfile',
+    '-Command',
+    "Set-Location '$WorkingDirectory'; $Command *> '$LogFile'"
+  ) | Out-Null
+}
 
-# Start backend and frontend
+$root = $PSScriptRoot
+$backendPath = Join-Path $root 'backend'
+$frontendPath = Join-Path $root 'frontend'
+$aiPath = Join-Path $root 'ai-engine'
 
-Start-Project -Path "$PSScriptRoot\backend"
-Start-Project -Path "$PSScriptRoot\frontend"
+Test-CommandAvailable -CommandName 'node' -Message 'Node.js is not installed or not in PATH.'
+Test-CommandAvailable -CommandName 'npm' -Message 'npm is not installed or not in PATH.'
+Test-CommandAvailable -CommandName 'python' -Message 'Python is not installed or not in PATH.'
 
-Write-Host "`nBoth backend and frontend have been started!" -ForegroundColor Green
-Write-Host "Use 'Get-Job' to view jobs" -ForegroundColor Gray
-Write-Host "Use 'Receive-Job -Name backend -Keep' to see backend logs" -ForegroundColor Gray
-Write-Host "Stop using: Stop-Job -Name backend,frontend" -ForegroundColor Gray
+if ($InstallDependencies) {
+  Write-Host "`nInstalling backend dependencies..." -ForegroundColor Yellow
+  Push-Location $backendPath
+  npm install
+  Pop-Location
+
+  Write-Host "`nInstalling frontend dependencies..." -ForegroundColor Yellow
+  Push-Location $frontendPath
+  npm install
+  Pop-Location
+
+  Write-Host "`nInstalling AI engine dependencies..." -ForegroundColor Yellow
+  Push-Location $aiPath
+  python -m pip install -r requirements.txt
+  Pop-Location
+}
+
+Start-ServiceWindow -Name 'backend' -WorkingDirectory $backendPath -Command 'npm run dev' -LogFile (Join-Path $root 'backend-dev.log')
+Start-ServiceWindow -Name 'frontend' -WorkingDirectory $frontendPath -Command 'npm run dev' -LogFile (Join-Path $root 'frontend-dev.log')
+Start-ServiceWindow -Name 'ai-engine' -WorkingDirectory $aiPath -Command 'python app.py' -LogFile (Join-Path $root 'ai-engine-dev.log')
+
+Write-Host "`nGig-Shield services are starting." -ForegroundColor Green
+Write-Host "Frontend: http://localhost:5173" -ForegroundColor Gray
+Write-Host "Backend:  http://localhost:5001/api/health" -ForegroundColor Gray
+Write-Host "AI Engine: http://localhost:5002/health" -ForegroundColor Gray
+Write-Host "`nUse Get-Content backend-dev.log -Wait (or frontend/ai log) to follow output." -ForegroundColor Gray

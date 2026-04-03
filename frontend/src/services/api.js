@@ -1,9 +1,7 @@
 import axios from 'axios'
 
-// Base API configuration — must match PORT in your .env (5001)
-const API_BASE_URL = 'http://localhost:5001/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api'
 
-// Create axios instance with default config
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -11,7 +9,6 @@ const api = axios.create({
   }
 })
 
-// Request interceptor - add auth token if available
 api.interceptors.request.use(
   (config) => {
     const user = localStorage.getItem('user')
@@ -23,12 +20,9 @@ api.interceptors.request.use(
     }
     return config
   },
-  (error) => {
-    return Promise.reject(error)
-  }
+  (error) => Promise.reject(error)
 )
 
-// Response interceptor - handle errors globally
 api.interceptors.response.use(
   (response) => response,
   (error) => {

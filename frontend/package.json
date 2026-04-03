@@ -1,7 +1,7 @@
 {
-  "name": "hardesh-pig",
+  "name": "gig-shield-frontend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Frontend for the Gig-Shield worker insurance platform",
   "main": "index.js",
   "scripts": {
     "dev": "vite",

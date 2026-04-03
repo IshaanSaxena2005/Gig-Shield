@@ -27,13 +27,16 @@ exports.forgotPassword = async (req, res) => {
 
     await user.update({ resetToken, resetTokenExpiry })
 
-    // In production you would email this token as a link
-    // For now we return it directly so you can test
-    res.json({
+    const response = {
       message: 'Reset token generated successfully.',
-      resetToken, // remove this line when you add real email sending
       expiresAt: resetTokenExpiry
-    })
+    }
+
+    if (process.env.EXPOSE_RESET_TOKEN === 'true') {
+      response.resetToken = resetToken
+    }
+
+    res.json(response)
   } catch (error) {
     res.status(500).json({ message: error.message })
   }

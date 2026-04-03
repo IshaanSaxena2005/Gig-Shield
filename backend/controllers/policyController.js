@@ -1,8 +1,29 @@
 const Policy = require('../models/Policy')
 const User = require('../models/User')
 const RiskZone = require('../models/RiskZone')
-const { calculatePremium } = require('../utils/premiumCalculator')
+const { buildPolicyQuote } = require('../utils/premiumCalculator')
 const { getWeatherData } = require('../services/weatherService')
+const { getRiskAssessment } = require('../services/mlService')
+
+const resolveQuoteContext = async ({ location, occupation, coverage }) => {
+  const riskZone = await RiskZone.findOne({ where: { location } })
+  const weatherData = await getWeatherData(location)
+  const aiRiskScore = await getRiskAssessment({
+    location,
+    rainfall: Number(weatherData?.rain?.['1h'] || 0),
+    temperature: Number(weatherData?.main?.temp || 0),
+    riskLevel: riskZone?.riskLevel || 'medium'
+  })
+
+  return buildPolicyQuote({
+    coverage,
+    occupation,
+    location,
+    riskZone,
+    weatherData,
+    aiRiskScore
+  })
+}
 
 exports.getPolicies = async (req, res) => {
   try {
@@ -49,17 +70,7 @@ exports.createPolicy = async (req, res) => {
       return res.status(400).json({ message: 'You already have an active policy' })
     }
 
-    const riskZone = await RiskZone.findOne({ where: { location } })
-    const weatherData = await getWeatherData(location)
-
-    const riskFactors = {
-      location: riskZone ? riskZone.riskLevel : 'medium',
-      weatherRisk: weatherData ? (weatherData.weather[0].main.toLowerCase() === 'rain' ? 0.8 : 0.3) : 0.5,
-      occupation: occupation.toLowerCase()
-    }
-
-    const basePremium = 50
-    const calculatedPremium = calculatePremium(basePremium, riskFactors)
+    const quote = await resolveQuoteContext({ location, occupation, coverage })
 
     const endDate = new Date()
     endDate.setFullYear(endDate.getFullYear() + 1)
@@ -67,12 +78,42 @@ exports.createPolicy = async (req, res) => {
     const policy = await Policy.create({
       userId: req.user.id,
       type,
-      premium: calculatedPremium,
+      premium: quote.premium,
       coverage,
+      location,
+      occupation,
+      riskLevel: quote.riskLevel,
+      recommendedCoverageHours: quote.recommendedCoverageHours,
+      pricingBreakdown: quote.pricingBreakdown,
+      eligibleTriggers: quote.eligibleTriggers,
+      paymentStatus: 'pending',
       endDate
     })
 
-    res.status(201).json(policy)
+    await User.update(
+      { location, occupation },
+      { where: { id: req.user.id } }
+    )
+
+    res.status(201).json({
+      ...policy.toJSON(),
+      quoteSummary: quote.quoteSummary
+    })
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+}
+
+exports.getPolicyQuote = async (req, res) => {
+  try {
+    const { coverage, occupation, location } = req.body
+
+    if (!coverage || !occupation || !location) {
+      return res.status(400).json({ message: 'coverage, occupation and location are required' })
+    }
+
+    const quote = await resolveQuoteContext({ coverage, occupation, location })
+    res.json(quote)
   } catch (error) {
     res.status(500).json({ message: error.message })
   }

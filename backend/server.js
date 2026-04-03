@@ -8,10 +8,27 @@ const { processAutomaticClaims } = require('./services/triggerService')
 dotenv.config({ path: '../.env' })
 
 // Validate required environment variables at startup — fail fast
-const required = ['JWT_SECRET', 'STRIPE_SECRET_KEY', 'OPENWEATHER_API_KEY']
-required.forEach(key => {
-  if (!process.env[key] || process.env[key].includes('your-')) {
-    console.warn(`WARNING: Environment variable ${key} is missing or still a placeholder`)
+const configChecks = [
+  {
+    key: 'JWT_SECRET',
+    isInvalid: (value) => !value || value.includes('your-'),
+    message: 'JWT auth is using a missing or placeholder secret.'
+  },
+  {
+    key: 'STRIPE_SECRET_KEY',
+    isInvalid: (value) => !value || value.includes('your-'),
+    message: 'Stripe is running in demo mode until a real secret key is provided.'
+  },
+  {
+    key: 'OPENWEATHER_API_KEY',
+    isInvalid: (value) => !value || value.includes('your-'),
+    message: 'Weather automation may fail until OPENWEATHER_API_KEY is configured.'
+  }
+]
+
+configChecks.forEach(({ key, isInvalid, message }) => {
+  if (isInvalid(process.env[key] || '')) {
+    console.warn(`WARNING: ${message}`)
   }
 })
 
@@ -20,9 +37,6 @@ require('./models/User')
 require('./models/Policy')
 require('./models/Claim')
 require('./models/RiskZone')
-
-// Connect to database
-connectDB()
 
 const app = express()
 
@@ -33,6 +47,15 @@ app.use(cors({
 }))
 
 app.use(express.json())
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'gig-shield-backend',
+    automationEnabled,
+    automationIntervalMinutes: Number(process.env.AUTOMATION_INTERVAL_MINUTES || 60)
+  })
+})
 
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'))
@@ -54,13 +77,25 @@ app.use((err, req, res, next) => {
 })
 
 const PORT = process.env.PORT || 5000
+const automationEnabled = process.env.ENABLE_AUTOMATION !== 'false'
+const automationIntervalMs = Number(process.env.AUTOMATION_INTERVAL_MINUTES || 60) * 60 * 1000
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
+const startServer = async () => {
+  await connectDB()
+
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`)
+  })
+
+  if (automationEnabled) {
+    setInterval(processAutomaticClaims, automationIntervalMs)
+    processAutomaticClaims()
+  } else {
+    console.log('Automation scheduler disabled via ENABLE_AUTOMATION=false')
+  }
+}
+
+startServer().catch((error) => {
+  console.error('Failed to start server:', error)
+  process.exit(1)
 })
-
-// Schedule automatic claims processing every hour
-setInterval(processAutomaticClaims, 60 * 60 * 1000)
-
-// Initial run on startup
-processAutomaticClaims()

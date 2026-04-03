@@ -23,11 +23,38 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* Protected Routes */}
-        <Route path="/dashboard" element={<WorkerDashboard />} />
-        <Route path="/policy" element={<PolicyPage />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/profile" element={<ProfilePage />} />
+        <Route
+          path="/dashboard"
+          element={(
+            <ProtectedRoute allowedRoles={['worker', 'admin']}>
+              <WorkerDashboard />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/policy"
+          element={(
+            <ProtectedRoute allowedRoles={['worker', 'admin']}>
+              <PolicyPage />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/admin"
+          element={(
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/profile"
+          element={(
+            <ProtectedRoute allowedRoles={['worker', 'admin']}>
+              <ProfilePage />
+            </ProtectedRoute>
+          )}
+        />
       </Routes>
     </Router>
   )

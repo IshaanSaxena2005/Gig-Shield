@@ -1,13 +1,11 @@
 import React, { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import axios from 'axios'
+import api from '../services/api'
 import '../styles/dashboard.css'
 
 const ResetPassword = () => {
   const navigate = useNavigate()
   const location = useLocation()
-
-  // Token can come from the ForgotPassword page via router state, or typed manually
   const [formData, setFormData] = useState({
     token: location.state?.token || '',
     newPassword: '',
@@ -17,13 +15,13 @@ const ResetPassword = () => {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
+  const handleChange = (event) => {
+    setFormData({ ...formData, [event.target.name]: event.target.value })
     setError('')
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const handleSubmit = async (event) => {
+    event.preventDefault()
     setError('')
 
     if (!formData.token) {
@@ -41,7 +39,7 @@ const ResetPassword = () => {
 
     try {
       setLoading(true)
-      await axios.post('http://localhost:5001/api/auth/reset-password', {
+      await api.post('/auth/reset-password', {
         token: formData.token,
         newPassword: formData.newPassword
       })
@@ -62,7 +60,7 @@ const ResetPassword = () => {
 
         {success ? (
           <div className="success-message">
-            ✅ Password reset successful! Redirecting to login...
+            Password reset successful! Redirecting to login...
           </div>
         ) : (
           <>
@@ -109,7 +107,7 @@ const ResetPassword = () => {
         )}
 
         <p className="auth-link">
-          <Link to="/forgot-password">← Request a new token</Link>
+          <Link to="/forgot-password">Request a new token</Link>
         </p>
       </div>
     </div>

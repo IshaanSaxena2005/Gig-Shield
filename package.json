@@ -1,12 +1,15 @@
 {
-  "name": "hardesh-pig",
+  "name": "gig-shield",
   "version": "1.0.0",
-  "description": "",
+  "description": "Gig-Shield workspace helpers",
   "main": "index.js",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "preview": "npm --prefix frontend run preview",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:ai": "python ai-engine/app.py",
+    "test:backend": "npm --prefix backend test"
   },
   "keywords": [],
   "author": "",

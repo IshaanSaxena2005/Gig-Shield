@@ -36,17 +36,55 @@ exports.getDashboardStats = async (req, res) => {
       }
     })
 
+    const flaggedClaims = await Claim.count({
+      where: { status: 'flagged' }
+    })
+
+    const automatedClaims = await Claim.count({
+      where: { source: 'automated' }
+    })
+
+    const softReviewQueue = await Claim.count({
+      where: {
+        status: 'flagged',
+        source: 'automated'
+      }
+    })
+
+    const recentTriggeredClaims = await Claim.findAll({
+      where: {
+        source: 'automated',
+        submittedAt: { [Op.gte]: weekAgo }
+      },
+      attributes: ['triggerType']
+    })
+
+    const triggerBreakdown = recentTriggeredClaims.reduce((acc, claim) => {
+      const key = claim.triggerType || 'manual-review'
+      acc[key] = (acc[key] || 0) + 1
+      return acc
+    }, {})
+
     res.json({
       platformMetrics: {
         workersInsured,
         activePolicies,
         totalPremium: Math.round(totalPremium),
-        totalPayout: Math.round(totalPayout)
+        totalPayout: Math.round(totalPayout),
+        automatedClaims,
+        flaggedClaims
       },
       claimsOverview: {
         claimsToday,
         claimsThisWeek,
-        totalPayout: Math.round(totalPayout)
+        totalPayout: Math.round(totalPayout),
+        softReviewQueue
+      },
+      automationMetrics: {
+        automatedClaims,
+        zeroTouchApproved: automatedClaims - softReviewQueue,
+        softReviewQueue,
+        triggerBreakdown
       }
     })
   } catch (error) {
@@ -128,6 +166,17 @@ exports.getFraudAlerts = async (req, res) => {
         })
       }
     })
+
+    const flaggedAutomations = recentClaims.filter((claim) => claim.status === 'flagged' && claim.source === 'automated')
+    if (flaggedAutomations.length > 0) {
+      fraudAlerts.push({
+        id: 'auto-review-queue',
+        type: 'Automated claims awaiting review',
+        severity: flaggedAutomations.length > 3 ? 'high' : 'medium',
+        user: 'System',
+        details: `${flaggedAutomations.length} automated claims are in soft review`
+      })
+    }
 
     res.json(fraudAlerts)
   } catch (error) {

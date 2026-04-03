@@ -32,6 +32,10 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: true
   },
+  averageDailyIncome: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true
+  },
   // Password reset fields
   resetToken: {
     type: DataTypes.STRING,

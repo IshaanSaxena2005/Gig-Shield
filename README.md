@@ -1,8 +1,19 @@
 # Gig-Shield
 
-Gig-Shield is a prototype insurance platform for gig workers. It combines a React frontend, an Express API, and a small Python AI service to model a parametric insurance workflow where disruptions such as weather events can affect coverage, claims, and payouts.
+Gig-Shield is a working parametric income-protection platform for gig workers. It combines a React frontend, an Express API, SQLite-backed policy and claims management, and a Python AI service for dynamic risk and fraud support.
 
-This repository is currently best understood as a hackathon-style prototype. The core frontend and backend are usable for local development, while parts of the documentation and AI integration are still catching up with the codebase.
+The project started as a hackathon prototype, but the current repo now supports the full Phase 2 story: worker onboarding, protected dashboards, policy quotes, dynamic premium calculation, automated triggers, zero-touch claims, admin review, payment simulation, and AI-assisted scoring with safe fallbacks.
+
+## Phase 2 Focus
+
+This version of the project is tuned for the DEV Trails Phase 2 theme, "Protect Your Worker". The current app flow emphasizes:
+
+- Registration and protected access to worker/admin experiences
+- Insurance policy management with pause, resume, pay, and cancel actions
+- Dynamic premium calculation with a quote preview before policy creation
+- Claims management with both manual submission and automated disruption-triggered payouts
+- A zero-touch claims path for verified events, with soft review for ambiguous or higher-risk triggers
+- Percentile-based payout logic internally, while the worker only sees the final payout amount
 
 ## What Is In This Repo
 
@@ -43,6 +54,8 @@ The backend currently runs against SQLite in `backend/database.sqlite` through [
 - pandas
 - joblib / scikit-learn style model loading
 
+The AI layer is now wired into the backend quote and claim flow. If the Python service or model artifacts are unavailable, the Node backend falls back to built-in risk and fraud heuristics so the app remains usable.
+
 ## Main Application Areas
 
 ### Frontend pages
@@ -64,12 +77,13 @@ Primary frontend entry points:
 
 - User authentication and JWT issuance
 - Password reset flow
-- Policy creation and management
-- Claim submission
-- Rule-based fraud detection
-- Weather-based automatic claim processing
+- Policy creation, premium quoting, and management
+- Claim submission and zero-touch automated claims
+- AI-assisted and rule-based fraud detection
+- Weather-based and mock-feed automatic claim processing
 - Admin reporting endpoints
 - User dashboard/profile endpoints
+- Demo-friendly premium payment flow with Stripe-ready upgrade path
 
 Primary backend entry point:
 
@@ -133,16 +147,22 @@ JWT_SECRET=replace-with-a-real-secret
 STRIPE_SECRET_KEY=replace-with-a-real-key
 OPENWEATHER_API_KEY=replace-with-a-real-key
 FRONTEND_URL=http://localhost:5173
-PORT=5000
+PORT=5001
 AI_ENGINE_PORT=5002
+ENABLE_AUTOMATION=true
+AUTOMATION_INTERVAL_MINUTES=60
+EXPOSE_RESET_TOKEN=false
 ```
 
 Notes:
 
 - The backend loads environment variables from `../.env` relative to `backend/server.js`.
-- `PORT` defaults to `5000`.
+- `PORT` is commonly run as `5001` in this repo.
 - The AI engine defaults to `5002`.
-- The frontend currently hardcodes `http://localhost:5001/api` in [frontend/src/services/api.js](C:\Users\AKASHDEEP\OneDrive\Documents\GitHub\Gig-Shield\frontend\src\services\api.js), so you will either need to change that file or run the backend on port `5001` to match it.
+- `ENABLE_AUTOMATION=false` disables scheduled claim processing for safer local testing.
+- `AUTOMATION_INTERVAL_MINUTES` controls how often automated triggers are evaluated.
+- `EXPOSE_RESET_TOKEN=true` is only for demo-mode password reset testing.
+- The frontend reads `VITE_API_BASE_URL` from `frontend/.env.local`. An example file is included at [frontend/.env.example](C:\Users\AKASHDEEP\OneDrive\Documents\GitHub\Gig-Shield\frontend\.env.example).
 
 ### Install dependencies
 
@@ -164,7 +184,7 @@ AI engine:
 
 ```bash
 cd ai-engine
-pip install flask joblib scikit-learn pandas
+pip install -r requirements.txt
 ```
 
 ### Run the services
@@ -193,7 +213,7 @@ python app.py
 Expected local URLs:
 
 - Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:5000` by default
+- Backend API: `http://localhost:5001` in the current local setup
 - AI engine: `http://localhost:5002` by default
 
 ## Available Scripts
@@ -208,31 +228,55 @@ Expected local URLs:
 
 - `npm start`
 - `npm run dev`
+- `npm test`
 
-There are currently no test or lint scripts defined in the main frontend/backend package files.
+Frontend scripts remain lightweight, but the backend now includes executable Node-based tests for pricing, trigger evaluation, and AI fallback behavior.
 
 ## Data Flow Overview
 
 1. A user authenticates through the backend and receives a JWT.
 2. The frontend stores the authenticated user in local storage and attaches the bearer token to API requests.
-3. Policies are created and priced through backend controllers and utility logic.
-4. Weather data is used by backend services to evaluate disruption conditions.
-5. Automatic claim processing runs on startup and then every hour in the backend.
-6. Manual claims are checked against simple fraud rules.
-7. Admin endpoints aggregate stats, alerts, and zone-level summaries.
+3. Policies are quoted and priced through a dynamic premium engine using location risk, live weather, coverage, occupation, and AI/fallback risk scoring.
+4. Weather data plus mock civic/environment feeds are evaluated to detect disruption triggers.
+5. Automatic claim processing runs on startup and at a configurable interval in the backend.
+6. Manual claims are checked against fraud rules plus AI/fallback fraud assessment and can enter a `flagged` soft-review state.
+7. Admin endpoints aggregate stats, automation metrics, fraud alerts, review queues, and zone-level summaries.
+
+## Automated Triggers
+
+The current backend is designed around these disruption triggers that support the Phase 2 zero-touch claims story:
+
+- Heavy rain
+- Thunderstorm
+- Flood and waterlogging risk
+- Extreme heat
+- Mock civic restriction
+- Air-quality stress
+
+Verified weather triggers can auto-approve claims, while ambiguous signals are sent into a soft-review queue so honest workers are not unfairly blocked. Internally, each trigger maps to a payout percentile; the worker only sees the final payout amount in the UI.
+
+## Health And Verification
+
+Two lightweight health endpoints are available:
+
+- Backend: `GET /api/health`
+- AI engine: `GET /health`
+
+Before demoing or deploying locally, the project has been verified with:
+
+- `npm test` in [backend/package.json](C:\Users\AKASHDEEP\OneDrive\Documents\GitHub\Gig-Shield\backend\package.json)
+- `npm run build` in [frontend/package.json](C:\Users\AKASHDEEP\OneDrive\Documents\GitHub\Gig-Shield\frontend\package.json)
+- `python -m py_compile app.py risk_prediction.py` in [ai-engine](C:\Users\AKASHDEEP\OneDrive\Documents\GitHub\Gig-Shield\ai-engine)
 
 ## Current Limitations
 
 These are important repo realities worth knowing before you build on top of this project:
 
-- The README and some docs were previously out of date; this file now reflects the current codebase more closely.
-- The backend uses SQLite even though older files still mention MySQL or MongoDB.
-- The frontend imports a `ProtectedRoute` component, but routes in [frontend/src/App.jsx](C:\Users\AKASHDEEP\OneDrive\Documents\GitHub\Gig-Shield\frontend\src\App.jsx) are not currently wrapped with it.
-- The frontend API base URL and backend default port do not currently match.
-- The AI service exists, but the Node backend does not appear to fully integrate with it yet.
-- `ai-engine/models/` currently contains `risk_model.pkl`; `risk_prediction.py` also expects `location_encoder.pkl`.
-- Automatic claims processing runs immediately on backend startup and then hourly, which means local development may depend on external weather API access.
-- No automated tests or linting setup were found in the primary app packages.
+- The backend uses SQLite, which is fine for local demos but should move to PostgreSQL or MySQL for real production scale.
+- Automatic claims processing still depends on weather access when automation is enabled.
+- Stripe is implemented in a demo-friendly mode unless a real secret key is provided.
+- The AI engine now falls back safely when model artifacts are missing, but it is still not a fully trained production ML stack.
+- Backend tests exist now, but frontend test coverage and linting are still missing.
 
 ## Useful Files
 
@@ -246,7 +290,7 @@ These are important repo realities worth knowing before you build on top of this
 
 ## Status
 
-Gig-Shield is a solid prototype with a readable separation between UI, API, and ML service boundaries. The main app path is in place, but there are still a few integration and documentation gaps to resolve before it would feel production-ready.
+Gig-Shield is now a strong working model for a hackathon or demo environment. It supports the full user journey locally and has safer AI, payment, health, and automation behavior than the original prototype. The main remaining gap is production hardening at infrastructure scale, not missing core product flow.
 
 ## Adversarial Defense & Anti-Spoofing Strategy
 

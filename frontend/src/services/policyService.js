@@ -43,3 +43,13 @@ export const updatePolicyStatus = async (policyId, status) => {
     throw error
   }
 }
+
+export const getPolicyQuote = async (policyData) => {
+  try {
+    const response = await api.post('/policies/quote', policyData)
+    return response.data
+  } catch (error) {
+    console.error('Error fetching policy quote:', error)
+    throw error
+  }
+}

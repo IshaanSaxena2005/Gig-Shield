@@ -23,7 +23,7 @@ app = Flask(__name__)
 
 @app.route('/predict-risk', methods=['POST'])
 def risk_endpoint():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
 
     required = ['location', 'rainfall', 'temperature']
     missing = [f for f in required if f not in data]
@@ -45,7 +45,7 @@ def risk_endpoint():
 
 @app.route('/detect-fraud', methods=['POST'])
 def fraud_endpoint():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
 
     required = ['amount', 'policyCoverage', 'claimCount30Days']
     missing = [f for f in required if f not in data]
@@ -74,7 +74,11 @@ def fraud_endpoint():
 
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({ 'status': 'ok' })
+    return jsonify({
+        'status': 'ok',
+        'service': 'gig-shield-ai-engine',
+        'port': int(os.environ.get('AI_ENGINE_PORT', 5002))
+    })
 
 
 if __name__ == '__main__':

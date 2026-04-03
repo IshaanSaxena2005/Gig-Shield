@@ -2,52 +2,46 @@
 const Policy = require('../models/Policy')
 const Claim = require('../models/Claim')
 const { getWeatherData } = require('./weatherService')
+const RiskZone = require('../models/RiskZone')
+const { evaluateDisruptionSignals } = require('./disruptionSignals')
 const { Op } = require('sequelize')
 
-const checkWeatherTriggers = async (policies, weatherData) => {
+const getPayoutAmount = (coverage, signal) => {
+  const normalizedCoverage = Number(coverage || 0)
+  const payout = normalizedCoverage * (signal.payoutPercentile / 100)
+  return Math.round(payout * 100) / 100
+}
+
+const checkWeatherTriggers = async (policy, weatherData, riskZone) => {
   const triggeredClaims = []
+  const signals = evaluateDisruptionSignals({
+    location: policy.location || policy.user?.location,
+    riskZone,
+    weatherData
+  })
 
-  for (const policy of policies) {
-    const weatherMain = weatherData.weather[0].main.toLowerCase()
-
-    if (weatherMain === 'rain' && weatherData.rain && weatherData.rain['1h'] > 10) {
-      // Heavy rain trigger
-      const existingClaim = await Claim.findOne({
-        where: {
-          userId: policy.userId,
-          description: { [Op.like]: '%Heavy rain%' },
-          submittedAt: { [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000) }
-        }
-      })
-
-      if (!existingClaim) {
-        triggeredClaims.push({
-          policyId: policy.id,
-          userId: policy.userId,
-          amount: Math.min(policy.coverage * 0.1, 200), // 10% of coverage, max 200
-          reason: 'Heavy rain damage - Automatic claim'
-        })
+  for (const signal of signals) {
+    const existingClaim = await Claim.findOne({
+      where: {
+        userId: policy.userId,
+        policyId: policy.id,
+        triggerType: signal.type,
+        submittedAt: { [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000) }
       }
-    }
+    })
 
-    if (weatherData.weather[0].main.toLowerCase() === 'thunderstorm') {
-      // Thunderstorm trigger
-      const existingClaim = await Claim.findOne({
-        where: {
-          userId: policy.userId,
-          description: { [Op.like]: '%Thunderstorm%' },
-          submittedAt: { [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000) }
-        }
+    if (!existingClaim) {
+      triggeredClaims.push({
+        policyId: policy.id,
+        userId: policy.userId,
+        amount: getPayoutAmount(policy.coverage, signal),
+        reason: signal.description,
+        status: signal.autoApprove ? 'approved' : 'flagged',
+        triggerType: signal.type,
+        notes: signal.autoApprove
+          ? `Zero-touch payout processed via ${signal.source} at ${signal.payoutPercentile}th percentile`
+          : `Soft review queued from ${signal.source} at ${signal.payoutPercentile}th percentile`
       })
-
-      if (!existingClaim) {
-        triggeredClaims.push({
-          policyId: policy.id,
-          userId: policy.userId,
-          amount: Math.min(policy.coverage * 0.15, 300), // 15% of coverage, max 300
-          reason: 'Thunderstorm damage - Automatic claim'
-        })
-      }
     }
   }
 
@@ -63,23 +57,29 @@ const processAutomaticClaims = async () => {
     })
 
     for (const policy of policies) {
-      if (policy.user && policy.user.location) {
-        const weatherData = await getWeatherData(policy.user.location)
+      const location = policy.location || policy.user?.location
+      if (location) {
+        const [weatherData, riskZone] = await Promise.all([
+          getWeatherData(location),
+          RiskZone.findOne({ where: { location } })
+        ])
 
         if (weatherData) {
-          const triggeredClaims = await checkWeatherTriggers([policy], weatherData)
+          const triggeredClaims = await checkWeatherTriggers(policy, weatherData, riskZone)
 
           for (const triggeredClaim of triggeredClaims) {
-            // FIX: use correct field names userId and policyId (not user/policy)
             await Claim.create({
               userId: triggeredClaim.userId,
               policyId: triggeredClaim.policyId,
               amount: triggeredClaim.amount,
               description: triggeredClaim.reason,
-              status: 'approved'
+              status: triggeredClaim.status,
+              source: 'automated',
+              triggerType: triggeredClaim.triggerType,
+              notes: triggeredClaim.notes
             })
 
-            console.log(`Automatic claim created for user ${triggeredClaim.userId}: ${triggeredClaim.reason}`)
+            console.log(`Automatic claim created for user ${triggeredClaim.userId}: ${triggeredClaim.triggerType}`)
           }
         }
       }

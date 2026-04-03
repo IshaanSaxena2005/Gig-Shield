@@ -3,6 +3,12 @@ const Claim = require('../models/Claim')
 const RiskZone = require('../models/RiskZone')
 const User = require('../models/User')
 const { getWeatherData } = require('../services/weatherService')
+const { evaluateDisruptionSignals } = require('../services/disruptionSignals')
+
+const getTriggerPayout = (coverage, payoutPercentile) => {
+  const amount = Number(coverage || 0) * (Number(payoutPercentile || 0) / 100)
+  return Math.round(amount * 100) / 100
+}
 
 exports.getDashboardData = async (req, res) => {
   try {
@@ -16,26 +22,38 @@ exports.getDashboardData = async (req, res) => {
       limit: 10
     })
 
+    const userLocation = req.user.location || policy?.location
     const riskZone = await RiskZone.findOne({
-      where: { location: req.user.location }
+      where: { location: userLocation }
     })
 
-    const weatherData = await getWeatherData(req.user.location)
+    const weatherData = userLocation ? await getWeatherData(userLocation) : null
     const earningsProtected = policy ? Math.min(policy.coverage * 0.5, 300) : 0
+    const activeTriggers = evaluateDisruptionSignals({
+      location: userLocation,
+      riskZone,
+      weatherData
+    })
 
     res.json({
       user: {
         name: req.user.name,
         email: req.user.email,
         occupation: req.user.occupation,
-        location: req.user.location
+        location: userLocation,
+        averageDailyIncome: req.user.averageDailyIncome
       },
       policy: policy ? {
         id: policy.id,
         type: policy.type,
         premium: policy.premium,
         coverage: policy.coverage,
-        status: policy.status
+        status: policy.status,
+        location: policy.location,
+        occupation: policy.occupation,
+        riskLevel: policy.riskLevel,
+        recommendedCoverageHours: policy.recommendedCoverageHours,
+        eligibleTriggers: policy.eligibleTriggers
       } : null,
       claims: claims.map(claim => ({
         id: claim.id,
@@ -46,6 +64,19 @@ exports.getDashboardData = async (req, res) => {
       })),
       riskLevel: riskZone ? riskZone.riskLevel : 'medium',
       earningsProtected,
+      activeTriggers: activeTriggers.map((trigger) => ({
+        type: trigger.type,
+        title: trigger.title,
+        severity: trigger.severity,
+        autoApprove: trigger.autoApprove,
+        description: trigger.description,
+        source: trigger.source,
+        payoutAmount: policy ? getTriggerPayout(policy.coverage, trigger.payoutPercentile) : 0
+      })),
+      automationSummary: {
+        zeroTouchClaims: claims.filter((claim) => claim.source === 'automated' && claim.status === 'approved').length,
+        flaggedClaims: claims.filter((claim) => claim.status === 'flagged').length
+      },
       weather: weatherData ? {
         condition: weatherData.weather[0].main,
         temperature: Math.round(weatherData.main.temp),

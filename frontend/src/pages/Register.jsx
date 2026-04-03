@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { registerUser } from '../services/authService'
 import '../styles/dashboard.css'
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 const Register = () => {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
@@ -19,16 +21,36 @@ const Register = () => {
   const platforms = ['Zomato', 'Swiggy', 'Zepto', 'Amazon', 'Flipkart']
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
+    const { name, value } = e.target
+    const normalizedValue = name === 'email'
+      ? value.replace(/\s+/g, '')
+      : value
+
+    setFormData({ ...formData, [name]: normalizedValue })
     setError('')
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!formData.fullName || !formData.platform || !formData.workCity ||
-        !formData.averageDailyIncome || !formData.email || !formData.password) {
+    const normalizedEmail = formData.email.trim().toLowerCase()
+    const normalizedName = formData.fullName.trim()
+    const normalizedCity = formData.workCity.trim()
+    const normalizedIncome = Number(formData.averageDailyIncome)
+
+    if (!normalizedName || !formData.platform || !normalizedCity ||
+        !formData.averageDailyIncome || !normalizedEmail || !formData.password) {
       setError('Please fill in all fields')
+      return
+    }
+
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      setError('Please enter a valid email address')
+      return
+    }
+
+    if (!Number.isFinite(normalizedIncome) || normalizedIncome <= 0) {
+      setError('Please enter a valid average daily income')
       return
     }
 
@@ -41,11 +63,12 @@ const Register = () => {
       setLoading(true)
       // FIX: actually call the real API
       await registerUser({
-        name: formData.fullName,
-        email: formData.email,
+        name: normalizedName,
+        email: normalizedEmail,
         password: formData.password,
         occupation: formData.platform,
-        location: formData.workCity
+        location: normalizedCity,
+        averageDailyIncome: normalizedIncome
       })
 
       navigate('/login')
@@ -63,7 +86,7 @@ const Register = () => {
 
         {error && <div className="error-message">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="auth-form">
+        <form onSubmit={handleSubmit} className="auth-form" noValidate>
           <div className="form-group">
             <label>Full Name</label>
             <input
@@ -118,11 +141,12 @@ const Register = () => {
           <div className="form-group">
             <label>Email</label>
             <input
-              type="email"
+              type="text"
               name="email"
               value={formData.email}
               onChange={handleChange}
               placeholder="Enter your email"
+              autoComplete="email"
               required
             />
           </div>

@@ -7,22 +7,27 @@ import { Navigate, useLocation } from 'react-router-dom'
  * If no user token found in localStorage → redirect to /login
  * Saves the attempted URL so we can redirect back after login
  */
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, allowedRoles }) => {
   const location = useLocation()
   const user = localStorage.getItem('user')
+  let parsedUser = null
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
   try {
-    const parsed = JSON.parse(user)
-    if (!parsed?.token) {
+    parsedUser = JSON.parse(user)
+    if (!parsedUser?.token) {
       return <Navigate to="/login" state={{ from: location }} replace />
     }
   } catch {
     localStorage.removeItem('user')
     return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  if (allowedRoles?.length && !allowedRoles.includes(parsedUser?.role)) {
+    return <Navigate to="/dashboard" replace />
   }
 
   return children
