@@ -2,212 +2,141 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import '../styles/dashboard.css'
 
-const STATS = [
-  { value: '8 cities', label: 'Covered across India', icon: '🏙️' },
-  { value: '< 4 hrs',  label: 'UPI payout time', icon: '⚡' },
-  { value: '2–5%',     label: 'Of weekly earnings', icon: '💰' },
-  { value: '0',        label: 'Claim forms needed', icon: '📋' },
-]
-
-const PLANS = [
-  {
-    name: 'Shield Basic', rate: '2%', cap: '₹2,500',
-    color: '#64748b',
-    triggers: ['Heavy rain (≥50mm/3hr)', 'Severe AQI (≥200)'],
-    for: 'Dry season · low-risk zones'
-  },
-  {
-    name: 'Shield Standard', rate: '3.5%', cap: '₹3,500',
-    color: '#667eea', recommended: true,
-    triggers: ['Heavy rain', 'Severe AQI', 'Extreme heat (≥42°C)', 'Cyclone / Red Alert'],
-    for: 'Monsoon · Chennai, Mumbai, Kolkata'
-  },
-  {
-    name: 'Shield Pro', rate: '5%', cap: '₹5,000',
-    color: '#7c3aed',
-    triggers: ['Heavy rain', 'Severe AQI', 'Extreme heat', 'Cyclone', 'Curfew / hartal / strike'],
-    for: 'All-year · high-density cities'
-  },
-]
-
-const STEPS = [
-  { n: '01', title: 'Register in 2 minutes', desc: 'Enter your platform, city, and average daily earnings.' },
-  { n: '02', title: 'Your contribution is set', desc: 'A fixed % of weekly earnings — scales with your income automatically.' },
-  { n: '03', title: 'Disruption → auto payout', desc: 'IMD confirms rain ≥50mm or AQI ≥200? Money hits your UPI. No action needed.' },
-]
-
-const FEATURES = [
-  { icon: '🌧️', title: 'Parametric triggers',    desc: 'Live IMD + CPCB data. No manual claims for weather events.' },
-  { icon: '💸', title: 'UPI in under 4 hours',   desc: '₹600–₹1,200 per disruption day, direct to your account.' },
-  { icon: '📊', title: 'Scales with earnings',   desc: 'Pay 2–5% of what you earn. Earn more, covered more.' },
-  { icon: '🤖', title: 'AI fraud protection',    desc: 'Protects honest workers. Bad actors get flagged automatically.' },
-  { icon: '📅', title: 'Weekly cycle',           desc: 'Aligned to Zomato/Swiggy payouts. Cancel anytime.' },
-  { icon: '📋', title: 'IRDAI sandbox',          desc: 'Ref: IRDAI/SB/2024/0091. Your premiums are protected.' },
-]
-
 const Home = () => {
   return (
     <div className="landing-page">
 
-      {/* ── HERO ── */}
+      {/* HERO */}
       <section className="hero-section">
-        <div className="hero-particles">
-          {[...Array(20)].map((_, i) => (
-            <div key={i} className="particle" style={{
-              left: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 5}s`,
-              animationDuration: `${5 + Math.random() * 10}s`
-            }} />
-          ))}
-        </div>
         <div className="hero-content">
-          <div className="hero-badge animate-fade-in">
+          <div style={{ fontSize: 13, letterSpacing: '0.08em', color: '#a78bfa', textTransform: 'uppercase', marginBottom: 12, fontWeight: 600 }}>
             IRDAI Regulatory Sandbox · Parametric Income Protection
           </div>
-
-          <h1 className="hero-title-modern animate-slide-up">
-            Gig_Worker
+          <h1 className="hero-title">
+            Income lost to rain or AQI?<br />You get paid automatically.
           </h1>
-
-          <p className="hero-powered animate-slide-up-delay-1">
-            POWERED BY GIGSHIELD AI
+          <p className="hero-subtitle" style={{ maxWidth: 560, margin: '1rem auto' }}>
+            GigShield is a parametric insurance platform built exclusively for Zomato and Swiggy food delivery partners.
+            When extreme weather or pollution disrupts your work, we pay your lost income directly to your UPI account — no paperwork, no waiting.
           </p>
-
-          <p className="hero-description animate-slide-up-delay-2">
-            Rain or bad air cost you earnings today?<br />
-            <strong>We pay you automatically — straight to UPI.</strong>
-          </p>
-
-          <p className="hero-disclaimer animate-slide-up-delay-3">
-            ⚠️ Income protection only — health, vehicle, and accidents are not covered.
-          </p>
-
-          <div className="hero-buttons animate-slide-up-delay-4">
-            <Link to="/register" className="btn btn-primary btn-lg">
-              Get Covered — From 2% of Earnings
-            </Link>
-            <Link to="/login" className="btn btn-secondary btn-lg">
-              Login
-            </Link>
+          <div style={{ fontSize: 13, color: '#f8c' , marginBottom: '1.5rem' }}>
+            ⚠️ This is income protection only. Health, vehicle damage, and accidents are not covered.
           </div>
-
-          {/* Stats row */}
-          <div className="stats-row animate-fade-in-delay">
-            {STATS.map(s => (
-              <div key={s.label} className="stat-item">
-                <div className="stat-icon">{s.icon}</div>
-                <div className="stat-value">{s.value}</div>
-                <div className="stat-label">{s.label}</div>
-              </div>
-            ))}
+          <div className="hero-buttons">
+            <Link to="/register" className="btn btn-primary">Get Insured — From ₹99/week</Link>
+            <Link to="/login"    className="btn btn-secondary">Login</Link>
           </div>
         </div>
       </section>
 
-      {/* ── HOW IT WORKS ── */}
-      <section className="how-it-works">
-        <h2 className="section-title">How it works</h2>
-        <div className="steps-grid-modern">
-          {STEPS.map(s => (
-            <div key={s.n} className="step-card-modern">
-              <div className="step-number-modern">{s.n}</div>
-              <div className="step-content">
-                <h3>{s.title}</h3>
-                <p>{s.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── PLANS ── */}
-      <section className="plans-section">
-        <h2 className="section-title">Weekly plans</h2>
-        <p className="section-subtitle">
-          Zomato and Swiggy pay weekly. So does Gig_Worker. Cancel anytime.
-        </p>
-        <div className="plans-grid">
-          {PLANS.map(plan => (
-            <div key={plan.name} className={`plan-card ${plan.recommended ? 'recommended' : ''}`}>
-              {plan.recommended && (
-                <div className="recommended-badge">MOST POPULAR</div>
-              )}
-              <div className="plan-header">
-                <div className="plan-name">{plan.name}</div>
-                <div className="plan-rate" style={{ color: plan.color }}>{plan.rate}</div>
-                <div className="plan-rate-label">of weekly earnings</div>
-                <div className="plan-cap">Up to {plan.cap}/week</div>
-              </div>
-              <div className="plan-features">
-                {plan.triggers.map(t => (
-                  <div key={t} className="plan-feature">
-                    <span className="check-icon" style={{ color: plan.color }}>✓</span>
-                    <span>{t}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="plan-footer">
-                Best for: {plan.for}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── FEATURES ── */}
+      {/* PLANS */}
       <section className="features-section">
-        <h2 className="section-title">Built for delivery partners</h2>
-        <div className="features-grid-modern">
-          {FEATURES.map((f, idx) => (
-            <div key={f.title} className="feature-card-modern" style={{ animationDelay: `${idx * 0.1}s` }}>
-              <div className="feature-icon">{f.icon}</div>
-              <h3>{f.title}</h3>
+        <h2 className="section-title">Weekly Plans — Aligned to Your Pay Cycle</h2>
+        <p style={{ textAlign: 'center', color: '#888', marginBottom: '2rem', fontSize: 14 }}>
+          Zomato and Swiggy pay weekly. So does GigShield. Cancel anytime.
+        </p>
+        <div className="steps-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+          {[
+            {
+              name: 'Shield Basic', price: '₹99/week', cap: '₹2,500 coverage cap',
+              triggers: ['Heavy rain (≥50mm)', 'Severe AQI (≥200)'],
+              for: 'Dry season / low-risk zones'
+            },
+            {
+              name: 'Shield Standard', price: '₹149/week', cap: '₹3,500 coverage cap',
+              recommended: true,
+              triggers: ['Heavy rain (≥50mm)', 'Severe AQI (≥200)', 'Extreme heat (≥42°C)', 'Cyclone / Red Alert'],
+              for: 'Monsoon season · Chennai, Mumbai'
+            },
+            {
+              name: 'Shield Pro', price: '₹229/week', cap: '₹5,000 coverage cap',
+              triggers: ['Heavy rain (≥50mm)', 'Severe AQI (≥200)', 'Extreme heat (≥42°C)', 'Cyclone / Red Alert', 'Section 144 curfew / hartal'],
+              for: 'All-year cover · high-density cities'
+            },
+          ].map(plan => (
+            <div key={plan.name} className="step-card" style={{ position: 'relative', border: plan.recommended ? '2px solid #667eea' : undefined }}>
+              {plan.recommended && (
+                <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: '#667eea', color: '#fff', fontSize: 11, padding: '2px 12px', borderRadius: 20, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  AI RECOMMENDED
+                </div>
+              )}
+              <h3 style={{ marginTop: plan.recommended ? 8 : 0 }}>{plan.name}</h3>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#667eea', margin: '4px 0' }}>{plan.price}</div>
+              <div style={{ fontSize: 12, color: '#888', marginBottom: 12 }}>{plan.cap}</div>
+              {plan.triggers.map(t => <p key={t} style={{ fontSize: 13, color: '#444', margin: '3px 0' }}>✓ {t}</p>)}
+              <p style={{ fontSize: 11, color: '#aaa', marginTop: 10 }}>Best for: {plan.for}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* HOW IT WORKS */}
+      <section className="how-it-works">
+        <h2 className="section-title">How It Works</h2>
+        <div className="steps-grid">
+          {[
+            { n: '1', title: 'Register as Zomato / Swiggy Partner', desc: 'Enter your partner ID, city, and average daily earnings. Takes 2 minutes.' },
+            { n: '2', title: 'AI Calculates Your Weekly Premium', desc: 'Our actuarial engine uses 5-year IMD weather data and your city\'s disruption frequency to price your plan.' },
+            { n: '3', title: 'Disruption Detected → Auto Payout', desc: 'When IMD confirms rain ≥50mm or AQI ≥200, your income-loss payout is initiated automatically. No claim form needed.' },
+          ].map(s => (
+            <div key={s.n} className="step-card">
+              <div className="step-number">{s.n}</div>
+              <h3>{s.title}</h3>
+              <p>{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* FEATURES */}
+      <section className="features-section">
+        <h2 className="section-title">Built for Delivery Partners, Not Generic Workers</h2>
+        <div className="features-grid">
+          {[
+            { icon: '🌧️', title: 'Parametric Rain Trigger', desc: 'IMD rainfall ≥50mm/3hr fires your claim automatically. No photos, no proof, no hassle.' },
+            { icon: '💰', title: 'UPI Payout in 4 Hours', desc: 'Income-loss payout directly to your UPI account. ₹600–₹1,200 per disruption day.' },
+            { icon: '📅', title: 'Weekly Pricing', desc: 'Premium deducted from your weekly Zomato/Swiggy payout. No upfront costs.' },
+            { icon: '🤖', title: 'AI Risk Assessment', desc: '5-year IMD + CPCB data, city-specific disruption frequency, and your earnings profile.' },
+            { icon: '🔍', title: 'Fraud Detection', desc: 'Multi-signal trust scoring checks GPS, device, and claim pattern — protecting honest workers.' },
+            { icon: '📋', title: 'IRDAI Compliant', desc: 'Operating under IRDAI Regulatory Sandbox (Ref: IRDAI/SB/2024/0091). Your premiums are protected.' },
+          ].map(f => (
+            <div key={f.title} className="feature-card">
+              <h3>{f.icon} {f.title}</h3>
               <p>{f.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── NOT COVERED ── */}
-      <section className="not-covered-section">
-        <h2 className="section-title-red">What we do NOT cover</h2>
-        <p className="section-subtitle">
-          Gig_Worker is income protection only.
+      {/* EXCLUSIONS — visible on landing for trust */}
+      <section className="how-it-works" style={{ background: '#fff5f5' }}>
+        <h2 className="section-title" style={{ color: '#c00' }}>What We Do NOT Cover</h2>
+        <p style={{ textAlign: 'center', color: '#666', fontSize: 14, marginBottom: '1.5rem' }}>
+          GigShield is income protection only. We are not a health, vehicle, or life insurer.
         </p>
-        <div className="not-covered-grid">
+        <div className="steps-grid">
           {[
-            { icon: '🏥', label: 'Health & medical' },
-            { icon: '🛵', label: 'Vehicle repairs' },
-            { icon: '🚑', label: 'Accidents & injury' },
-            { icon: '💀', label: 'Life insurance' },
+            { icon: '🏥', label: 'Health & Medical', desc: 'Doctor visits, hospitalisation, or illness — not covered.' },
+            { icon: '🛵', label: 'Vehicle Repairs', desc: 'Bike damage, fuel, or maintenance — not covered.' },
+            { icon: '🚑', label: 'Accidents & Injuries', desc: 'Personal injury or third-party liability — not covered.' },
+            { icon: '💀', label: 'Life Insurance', desc: 'Death benefit or disability cover — not covered.' },
           ].map(e => (
-            <div key={e.label} className="not-covered-item">
-              <div className="not-covered-icon">{e.icon}</div>
-              <div className="not-covered-label">{e.label}</div>
+            <div key={e.label} className="step-card" style={{ border: '1px solid #fcc' }}>
+              <div style={{ fontSize: 28 }}>{e.icon}</div>
+              <h3 style={{ color: '#c00' }}>{e.label}</h3>
+              <p style={{ color: '#888' }}>{e.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── CTA ── */}
-      <section className="cta-section">
-        <h2 className="cta-title">Ready to protect your earnings?</h2>
-        <p className="cta-subtitle">
-          Join thousands of delivery partners already covered.
-        </p>
-        <Link to="/register" className="btn btn-primary btn-xl">
-          Get Covered — From 2% of Earnings
-        </Link>
-      </section>
-
-      {/* ── FOOTER ── */}
       <footer className="landing-footer">
         <p>
-          © 2026 Gig_Worker · Powered by GigShield AI · IRDAI Sandbox Ref: IRDAI/SB/2024/0091 ·
-          <Link to="/register" className="footer-link">Get covered →</Link>
+          © 2026 GigShield · IRDAI Regulatory Sandbox Ref: IRDAI/SB/2024/0091 ·
+          Protecting food delivery partners across India ·
+          <a href="/register" style={{ color: '#a78bfa', marginLeft: 8 }}>Get covered from ₹99/week →</a>
         </p>
       </footer>
-
     </div>
   )
 }

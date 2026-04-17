@@ -1,6 +1,7 @@
-const Policy = require('../models/Policy')
-const User   = require('../models/User')
-const { calculateWeeklyPremium, calculateContributionPremium, PLAN_COVERAGE } = require('../utils/premiumCalculator')
+const Policy         = require('../models/Policy')
+const User           = require('../models/User')
+const reserveService = require('../services/reserveService')
+const { calculateWeeklyPremium, calculateContributionPremium, PLAN_CONFIG } = require('../utils/premiumCalculator')
 
 exports.getPolicies = async (req, res) => {
   try {
@@ -28,10 +29,10 @@ exports.getPolicyById = async (req, res) => {
 
 exports.createPolicy = async (req, res) => {
   try {
-    const { type, location } = req.body
+    const { type, occupation, location } = req.body
 
-    if (!type || !location) {
-      return res.status(400).json({ message: 'type and location are required' })
+    if (!type || !occupation || !location) {
+      return res.status(400).json({ message: 'type, occupation and location are required' })
     }
 
     const validTypes = ['Basic', 'Standard', 'Pro']
@@ -39,21 +40,20 @@ exports.createPolicy = async (req, res) => {
       return res.status(400).json({ message: `type must be one of: ${validTypes.join(', ')}` })
     }
 
-    const city             = location.split(',')[0].trim()
-    const avgDailyEarnings = parseFloat(req.user.avgDailyEarnings) || 700
-    const premiumResult    = calculateWeeklyPremium({ city, planType: type, avgDailyEarnings })
+    const city               = location.split(',')[0].trim()
+    const avgDailyEarnings   = parseFloat(req.user.avgDailyEarnings) || 700
+    const premiumResult      = calculateWeeklyPremium({ city, planType: type, avgDailyEarnings })
 
     // Preview-only mode — return price without creating a policy
     if (req.body.previewOnly) {
       return res.json({
-        premium:            premiumResult.grossPremium,
-        contributionPct:    premiumResult.contributionPct,
-        weeklyEarnings:     premiumResult.weeklyEarnings,
-        coverageMultiplier: premiumResult.coverageMultiplier,
-        premiumBreakdown:   premiumResult.breakdown,
-        targetLossRatio:    premiumResult.targetLossRatio,
-        coverage:           premiumResult.coverage,
-        cityRisk:           premiumResult.cityRisk
+        premium:          premiumResult.grossPremium,
+        contributionPct:  premiumResult.contributionPct,
+        weeklyEarnings:   premiumResult.weeklyEarnings,
+        premiumBreakdown: premiumResult.breakdown,
+        targetLossRatio:  premiumResult.targetLossRatio,
+        coverage:         PLAN_CONFIG[type.toLowerCase()].coverage,
+        cityRisk:         premiumResult.cityRisk
       })
     }
 
@@ -63,6 +63,21 @@ exports.createPolicy = async (req, res) => {
       return res.status(400).json({ message: 'You already have an active policy' })
     }
 
+    // Solvency gate — auto-halt new sales when reserves are critically low.
+    // Re-derived live from the reserve ledger each call (no stale flag to drift).
+    try {
+      await reserveService.checkBeforeNewPolicy()
+    } catch (err) {
+      if (err.code === 'POLICY_SALES_HALTED') {
+        return res.status(503).json({
+          message:      err.message,
+          code:         err.code,
+          currentRatio: err.ratio
+        })
+      }
+      throw err
+    }
+
     const startDate = new Date()
     const endDate   = new Date()
     endDate.setDate(endDate.getDate() + 7)
@@ -70,20 +85,19 @@ exports.createPolicy = async (req, res) => {
     const policy = await Policy.create({
       userId:   req.user.id,
       type,
-      premium:  premiumResult.grossPremium,
-      coverage: premiumResult.coverage,
+      premium:  premiumResult.grossPremium,   // contribution price — what worker pays
+      coverage: PLAN_CONFIG[type.toLowerCase()].coverage,
       startDate,
       endDate
     })
 
     res.status(201).json({
       ...policy.toJSON(),
-      contributionPct:    premiumResult.contributionPct,
-      weeklyEarnings:     premiumResult.weeklyEarnings,
-      coverageMultiplier: premiumResult.coverageMultiplier,
-      premiumBreakdown:   premiumResult.breakdown,
-      targetLossRatio:    premiumResult.targetLossRatio,
-      cityRisk:           premiumResult.cityRisk
+      contributionPct:  premiumResult.contributionPct,
+      weeklyEarnings:   premiumResult.weeklyEarnings,
+      premiumBreakdown: premiumResult.breakdown,
+      targetLossRatio:  premiumResult.targetLossRatio,
+      cityRisk:         premiumResult.cityRisk
     })
   } catch (error) {
     res.status(500).json({ message: error.message })

@@ -50,9 +50,6 @@ const Navbar = () => {
           </li>
         )}
         <li>
-          <Link to="/complaints" className={isActive('/complaints')}>Help</Link>
-        </li>
-        <li>
           <Link to="/profile" className={isActive('/profile')}>
             👤 {user?.name || 'Account'}
           </Link>

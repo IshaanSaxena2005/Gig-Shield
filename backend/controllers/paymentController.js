@@ -1,141 +1,108 @@
 /**
  * paymentController.js
  * --------------------
- * Razorpay payment gateway integration for GigShield weekly policy premiums.
+ * Handles premium collection for GigShield weekly policies.
  *
- * Flow:
- *  1. POST /api/payments/create-order  → creates Razorpay order, returns order_id
- *  2. Frontend opens Razorpay checkout with order_id
- *  3. Worker pays via UPI / card / wallet
- *  4. POST /api/payments/verify        → verifies signature, activates policy
- *  5. POST /api/payments/payout        → admin-only mock payout disbursement
+ * Payment flow for India:
+ *  - Real implementation: Razorpay UPI / PhonePe / Paytm
+ *  - Demo/sandbox: returns a mock UPI payment intent for hackathon presentation
+ *  - Stripe kept for card payments (international), but INR fixed
  *
- * Sandbox keys: set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in .env
- * Get free test keys at: https://dashboard.razorpay.com/app/keys
+ * NOTE: Stripe does support INR but UPI is the dominant payment method
+ * for gig workers in India. Razorpay is the production recommendation.
  */
 
-const crypto = require('crypto')
-const Policy = require('../models/Policy')
-const Claim  = require('../models/Claim')
+const Policy         = require('../models/Policy')
+const Claim          = require('../models/Claim')
+const reserveService = require('../services/reserveService')
 
-const getRazorpay = () => {
-  const keyId     = process.env.RAZORPAY_KEY_ID
-  const keySecret = process.env.RAZORPAY_KEY_SECRET
-
-  if (!keyId || !keySecret || keyId.includes('your_') || keySecret.includes('your_')) {
-    return null  // sandbox/demo mode
-  }
-
-  const Razorpay = require('razorpay')
-  return new Razorpay({ key_id: keyId, key_secret: keySecret })
-}
-
-// ── 1. Create Razorpay order ──────────────────────────────────────────────────
-exports.createOrder = async (req, res) => {
+// ── Mock UPI payment (primary — for demo and gig workers) ────────────────────
+exports.initiateUpiPayment = async (req, res) => {
   try {
     const { policyId } = req.body
-    if (!policyId) return res.status(400).json({ message: 'policyId is required' })
 
-    const policy = await Policy.findByPk(policyId)
-    if (!policy) return res.status(404).json({ message: 'Policy not found' })
-    if (policy.userId !== req.user.id) return res.status(403).json({ message: 'Not authorized' })
-
-    const amountPaise = Math.round(parseFloat(policy.premium) * 100)  // paise
-
-    const razorpay = getRazorpay()
-
-    // ── Demo / sandbox mode ───────────────────────────────────────────────────
-    if (!razorpay) {
-      const demoOrder = {
-        id:          `order_DEMO_${Date.now()}`,
-        amount:      amountPaise,
-        currency:    'INR',
-        receipt:     `receipt_${policyId}_${Date.now()}`,
-        status:      'created',
-        demo:        true,
-        keyId:       'rzp_test_demo',
-        policyId:    policy.id,
-        planType:    policy.type,
-        description: `Gig_Worker ${policy.type} Plan — Weekly Premium`
-      }
-      return res.json(demoOrder)
+    if (!policyId) {
+      return res.status(400).json({ message: 'policyId is required' })
     }
 
-    // ── Live / test Razorpay ──────────────────────────────────────────────────
-    const order = await razorpay.orders.create({
-      amount:   amountPaise,
-      currency: 'INR',
-      receipt:  `receipt_${policyId}_${Date.now()}`,
-      notes: {
-        policyId: String(policy.id),
-        userId:   String(req.user.id),
-        planType: policy.type
-      }
-    })
+    const policy = await Policy.findByPk(policyId)
+    if (!policy) {
+      return res.status(404).json({ message: 'Policy not found' })
+    }
 
-    res.json({
-      ...order,
-      keyId:       process.env.RAZORPAY_KEY_ID,
-      policyId:    policy.id,
-      planType:    policy.type,
-      description: `Gig_Worker ${policy.type} Plan — Weekly Premium`,
-      userName:    req.user.name,
-      userEmail:   req.user.email
-    })
+    if (policy.userId !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' })
+    }
+
+    // FIX: amount in INR (Razorpay uses paise — multiply by 100 in production)
+    const amountINR = parseFloat(policy.premium)
+
+    // Simulate UPI intent (replace with Razorpay SDK in production)
+    const mockUpiIntent = {
+      paymentId:     `PAY-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+      upiDeeplink:   `upi://pay?pa=gigshield@upi&pn=GigShield&am=${amountINR}&cu=INR&tn=Weekly+Policy+Premium`,
+      qrCode:        `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=gigshield@upi&am=${amountINR}`,
+      amount:        amountINR,
+      currency:      'INR',
+      description:   `GigShield ${policy.type} Plan — Weekly Premium`,
+      policyId:      policy.id,
+      expiresAt:     new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 min
+      status:        'pending'
+    }
+
+    res.json(mockUpiIntent)
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
 }
 
-// ── 2. Verify payment & activate policy ──────────────────────────────────────
-exports.verifyPayment = async (req, res) => {
+// ── Stripe card payment (secondary — INR fixed) ───────────────────────────────
+exports.processPayment = async (req, res) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, policyId } = req.body
-
-    if (!policyId) return res.status(400).json({ message: 'policyId is required' })
-
-    const policy = await Policy.findByPk(policyId)
-    if (!policy) return res.status(404).json({ message: 'Policy not found' })
-    if (policy.userId !== req.user.id) return res.status(403).json({ message: 'Not authorized' })
-
-    // ── Demo mode — skip signature verification ───────────────────────────────
-    const isDemoOrder = razorpay_order_id?.startsWith('order_DEMO_')
-    if (!isDemoOrder) {
-      const keySecret = process.env.RAZORPAY_KEY_SECRET
-      if (!keySecret || keySecret.includes('your_')) {
-        return res.status(400).json({ message: 'Razorpay not configured' })
-      }
-
-      // Verify HMAC-SHA256 signature
-      const expectedSignature = crypto
-        .createHmac('sha256', keySecret)
-        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-        .digest('hex')
-
-      if (expectedSignature !== razorpay_signature) {
-        return res.status(400).json({ message: 'Payment verification failed — invalid signature' })
-      }
+    const stripeKey = process.env.STRIPE_SECRET_KEY
+    if (!stripeKey || stripeKey.includes('your-')) {
+      // Graceful demo fallback when Stripe not configured
+      return res.json({
+        clientSecret: 'demo_secret_not_configured',
+        message: 'Stripe not configured — use UPI flow for demo',
+        demo: true
+      })
     }
 
-    // Mark policy as paid and active
-    await policy.update({ status: 'active' })
+    const stripe = require('stripe')(stripeKey)
+    const { policyId } = req.body
 
-    res.json({
-      success:   true,
-      message:   'Payment verified. Policy is now active.',
-      policyId:  policy.id,
-      planType:  policy.type,
-      premium:   policy.premium,
-      coverage:  policy.coverage,
-      validUntil:policy.endDate,
-      paymentId: razorpay_payment_id || 'demo_payment'
+    if (!policyId) {
+      return res.status(400).json({ message: 'policyId is required' })
+    }
+
+    const policy = await Policy.findByPk(policyId)
+    if (!policy) {
+      return res.status(404).json({ message: 'Policy not found' })
+    }
+
+    if (policy.userId !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' })
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount:   Math.round(parseFloat(policy.premium) * 100), // paise (INR subunit)
+      currency: 'inr',  // FIX: was 'usd'
+      payment_method_types: ['card'],
+      metadata: {
+        policyId:  policy.id,
+        userId:    req.user.id,
+        planType:  policy.type
+      }
     })
+
+    res.json({ clientSecret: paymentIntent.client_secret })
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
 }
 
-// ── 3. Mock payout disbursement (after claim approval) ───────────────────────
+// ── Mock payout disbursement (called after auto-claim approval) ──────────────
 exports.disbursePayout = async (req, res) => {
   try {
     const { claimId, upiId, amount } = req.body
@@ -144,25 +111,62 @@ exports.disbursePayout = async (req, res) => {
       return res.status(400).json({ message: 'claimId, upiId and amount are required' })
     }
 
-    // Basic UPI ID validation
-    const UPI_RE = /^[\w.\-]+@[\w]+$/
-    if (!UPI_RE.test(upiId)) {
-      return res.status(400).json({ message: 'Invalid UPI ID format (e.g. name@upi)' })
+    const payoutAmount = parseFloat(amount)
+
+    // ── Solvency gate ─────────────────────────────────────────────────────
+    // Refuse payout if reserves can't cover it. On failure, flip the claim
+    // into a terminal status the admin dashboard can surface, and fan out
+    // a critical alert.
+    try {
+      await reserveService.checkBeforePayout(payoutAmount)
+    } catch (reserveErr) {
+      if (reserveErr.code === 'INSUFFICIENT_RESERVES') {
+        const claim = await Claim.findByPk(claimId)
+        if (claim) {
+          await claim.update({
+            status:        'halted_insufficient_reserves',
+            payout_status: 'failed',
+            payoutUpdatedAt: new Date(),
+            notes:         `${claim.notes || ''}\n[${new Date().toISOString()}] Payout blocked: ${reserveErr.message}`.trim()
+          })
+        }
+        await reserveService.alertReserveCritical(await reserveService.getSolvencySnapshot())
+        console.error(`[paymentController] Payout BLOCKED claimId=${claimId} amount=₹${payoutAmount} reason=${reserveErr.message}`)
+        return res.status(503).json({
+          message:      'Payout temporarily halted — insufficient reserves. Admin notified.',
+          code:         'INSUFFICIENT_RESERVES',
+          currentRatio: reserveErr.currentRatio,
+          claimStatus:  'halted_insufficient_reserves'
+        })
+      }
+      throw reserveErr
     }
 
-    // In production: call Razorpay Payout API
+    // Reserves OK — allocate liquidity to this claim BEFORE disbursing
+    await reserveService.allocateToClaim(claimId, payoutAmount)
+
+    // In production: call Razorpay Payout API or IMPS transfer
     const mockPayout = {
-      payoutId:      `PAYOUT-${Date.now()}`,
+      payoutId:       `PAYOUT-${Date.now()}`,
       claimId,
-      recipientUpi:  upiId,
-      amountINR:     parseFloat(amount),
-      status:        'processing',
-      estimatedTime: '2–4 hours',
-      initiatedAt:   new Date().toISOString(),
-      message:       `₹${amount} income-loss payout initiated to ${upiId}`
+      recipientUpi:   upiId,
+      amountINR:      payoutAmount,
+      status:         'processing',
+      estimatedTime:  '2–4 hours',
+      initiatedAt:    new Date().toISOString(),
+      message:        `₹${amount} income-loss payout initiated to ${upiId}`
     }
 
-    console.log(`[payment] Payout: claimId=${claimId} upi=${upiId} amount=₹${amount}`)
+    // Release the claims_pending reserve once the mock disbursement "succeeds".
+    // In production, move this into the payout-webhook handler that fires on
+    // Razorpay payout completion.
+    try {
+      await reserveService.releaseClaimReserve(claimId)
+    } catch (err) {
+      console.error(`[paymentController] Reserve release failed for claimId=${claimId}:`, err.message)
+    }
+
+    console.log(`[paymentController] Payout initiated: claimId=${claimId} upi=${upiId} amount=₹${amount}`)
     res.json(mockPayout)
   } catch (error) {
     res.status(500).json({ message: error.message })

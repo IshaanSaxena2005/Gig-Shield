@@ -49,57 +49,47 @@ const Login = () => {
 
   return (
     <div className="auth-container">
-      <div className="auth-card-modern">
-        <div className="auth-card-header">
-          <div className="auth-logo">🛡️</div>
-          <h2>Welcome Back</h2>
-          <p className="auth-subtitle-modern">Sign in to access your income protection dashboard</p>
-        </div>
+      <div className="auth-card">
+        <h2>Login to GigShield AI</h2>
 
         {error && <div className="error-message">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="auth-form-modern">
-          <div className="form-group-modern">
-            <label className="form-label">Email</label>
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="form-group">
+            <label>Email</label>
             <input
               type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
               placeholder="Enter your email"
-              className="form-input"
               required
             />
           </div>
 
-          <div className="form-group-modern">
-            <label className="form-label">Password</label>
+          <div className="form-group">
+            <label>Password</label>
             <input
               type="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
               placeholder="Enter your password"
-              className="form-input"
               required
             />
           </div>
 
-          <button type="submit" className="submit-btn-modern" disabled={loading}>
-            {loading ? (
-              <span className="loading-spinner"></span>
-            ) : 'Login'}
+          <button type="submit" className="submit-btn" disabled={loading}>
+            {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
-        <div className="auth-footer">
-          <p className="auth-link">
-            Don't have an account? <Link to="/register">Register here</Link>
-          </p>
-          <p className="auth-link">
-            <Link to="/forgot-password">Forgot your password?</Link>
-          </p>
-        </div>
+        <p className="auth-link">
+          Don't have an account? <Link to="/register">Register here</Link>
+        </p>
+        <p className="auth-link">
+          <Link to="/forgot-password">Forgot your password?</Link>
+        </p>
       </div>
     </div>
   )

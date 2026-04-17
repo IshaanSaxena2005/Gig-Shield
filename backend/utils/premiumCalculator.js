@@ -72,23 +72,9 @@ const LOADINGS = {
 const TOTAL_LOADING = Object.values(LOADINGS).reduce((s, v) => s + v, 0)  // 0.48
 
 // ── Plan definitions ──────────────────────────────────────────────────────────
-// Coverage cap scales with the worker's weekly earnings — same multiplier as contribution rate.
-// This ensures the product always makes sense: a ₹1,000/day worker gets proportionally more coverage.
-//   Basic:    2×  weekly earnings  (e.g. ₹700/day → ₹9,800 cap)
-//   Standard: 3.5× weekly earnings (e.g. ₹700/day → ₹17,150 cap)
-//   Pro:      5×  weekly earnings  (e.g. ₹700/day → ₹24,500 cap)
-const PLAN_COVERAGE_MULTIPLIER = {
-  Basic:    2.0,
-  Standard: 3.5,
-  Pro:      5.0
-}
-
-// Static fallback caps (used when avgDailyEarnings is not known, e.g. legacy code)
-const PLAN_COVERAGE = {
-  Basic:    9800,
-  Standard: 17150,
-  Pro:      24500
-}
+// Coverage values now live in PLAN_CONFIG (lower in this file). Looked up by
+// `PLAN_CONFIG[planType.toLowerCase()].coverage` since legacy code uses
+// capitalized plan names ('Basic'/'Standard'/'Pro').
 
 const PLAN_TRIGGERS = {
   Basic:    ['rain', 'aqi'],
@@ -135,21 +121,18 @@ const _calcActuarialPure = (city, planType, avgDailyEarnings) => {
  * @returns {object}  { premium, weeklyEarnings, contributionRate, contributionPct, coverage }
  */
 const calculateContributionPremium = ({ planType = 'Standard', avgDailyEarnings = 700 } = {}) => {
-  const daily      = Math.min(parseFloat(avgDailyEarnings) || 700, 5000)
-  const weekly     = daily * 7
-  const rate       = CONTRIBUTION_RATE[planType] || CONTRIBUTION_RATE.Standard
-  const multiplier = PLAN_COVERAGE_MULTIPLIER[planType] || PLAN_COVERAGE_MULTIPLIER.Standard
-
-  const premium  = Math.round(weekly * rate / 5) * 5          // round to nearest ₹5
-  const coverage = Math.round(weekly * multiplier / 50) * 50  // round to nearest ₹50
+  const daily   = Math.min(parseFloat(avgDailyEarnings) || 700, 5000)
+  const weekly  = daily * 7
+  const rate    = CONTRIBUTION_RATE[planType] || CONTRIBUTION_RATE.Standard
+  const rawPrem = weekly * rate
+  const premium = Math.round(rawPrem / 5) * 5  // round to nearest ₹5
 
   return {
     premium,
     weeklyEarnings:  Math.round(weekly),
     contributionRate: rate,
     contributionPct: `${(rate * 100).toFixed(1)}%`,
-    coverage,
-    coverageMultiplier: `${multiplier}× weekly earnings`
+    coverage:        PLAN_CONFIG[planType.toLowerCase()]?.coverage
   }
 }
 
@@ -178,10 +161,11 @@ const calculateWeeklyPremium = ({ city = 'default', planType = 'Standard', avgDa
   // Expected monthly payout (for loss ratio simulation)
   const freq     = CITY_FREQUENCY[city] || CITY_FREQUENCY.default
   const triggers = PLAN_TRIGGERS[planType] || PLAN_TRIGGERS.Standard
+  const coverageCap = PLAN_CONFIG[planType.toLowerCase()]?.coverage ?? PLAN_CONFIG.standard.coverage
   let expectedMonthlyPayout = 0
   for (const t of triggers) {
     const expectedDays  = (freq[t] || 0) * TRIGGER_PROBABILITY[t]
-    const lossPerEvent  = Math.min(SEVERITY_FRACTION[t] * daily, PLAN_COVERAGE[planType])
+    const lossPerEvent  = Math.min(SEVERITY_FRACTION[t] * daily, coverageCap)
     expectedMonthlyPayout += expectedDays * lossPerEvent
   }
   const expectedWeeklyPayout = expectedMonthlyPayout / 4.33
@@ -196,11 +180,9 @@ const calculateWeeklyPremium = ({ city = 'default', planType = 'Standard', avgDa
 
   return {
     // ── Worker-facing ──────────────────────────────────────────────────────
-    grossPremium:     contribution.premium,
-    contributionPct:  contribution.contributionPct,
+    grossPremium:     contribution.premium,           // what worker pays
+    contributionPct:  contribution.contributionPct,   // e.g. "3.5%"
     weeklyEarnings:   contribution.weeklyEarnings,
-    coverage:         contribution.coverage,
-    coverageMultiplier: contribution.coverageMultiplier,
 
     // ── Actuarial reference (internal / admin) ─────────────────────────────
     actuarialPure:    Math.round(actuarialPure),
@@ -213,8 +195,6 @@ const calculateWeeklyPremium = ({ city = 'default', planType = 'Standard', avgDa
       contributionRate:     contribution.contributionPct,
       weeklyEarnings:       contribution.weeklyEarnings,
       workerPremium:        contribution.premium,
-      coverage:             contribution.coverage,
-      coverageMultiplier:   contribution.coverageMultiplier,
       actuarialFairPremium: actuarialGross,
       affordabilityGap:     Math.max(0, actuarialGross - contribution.premium),
       expectedWeeklyPayout: Math.round(expectedWeeklyPayout),
@@ -222,7 +202,7 @@ const calculateWeeklyPremium = ({ city = 'default', planType = 'Standard', avgDa
       cityRisk
     },
     targetLossRatio: `${impliedLossRatio}%`,
-    coverageCap:     contribution.coverage,
+    coverageCap,
     planType,
     city,
     cityRisk
@@ -249,13 +229,75 @@ const calculatePremium = (basePremium, riskFactors) => {
   return calculateWeeklyPremium({ city, planType }).grossPremium
 }
 
+/**
+ * Single source of truth for plan pricing.
+ * Coverage, worker rate, and display string all live here so they can't drift.
+ */
+const PLAN_CONFIG = {
+  basic: {
+    coverage:                2500,
+    workerPercentage:        0.02,   // 2%
+    workerPercentageDisplay: '2'
+  },
+  standard: {
+    coverage:                3500,
+    workerPercentage:        0.035,  // 3.5%
+    workerPercentageDisplay: '3.5'
+  },
+  pro: {
+    coverage:                5000,
+    workerPercentage:        0.05,   // 5%
+    workerPercentageDisplay: '5'
+  }
+}
+
+/**
+ * Build a complete policy quote for a worker.
+ *
+ * @param {Object} userData       User data including weekly_earnings, city, risk_score
+ * @param {string} selectedPlan   'basic', 'standard', or 'pro'
+ * @returns {Object}              Complete quote with premium, coverage, breakdown
+ * @throws {Error}                If selectedPlan is not one of the three known plans
+ */
+function buildPolicyQuote(userData, selectedPlan) {
+  const plan = PLAN_CONFIG[selectedPlan]
+  if (!plan) throw new Error(`Invalid plan: ${selectedPlan}`)
+
+  const coverageAmount = plan.coverage
+  const purePremium = coverageAmount * 0.01               // 1% of coverage
+  const loading = purePremium * 0.48                       // 48% loading (expenses, risk, profit)
+  const totalActuarialPremium = purePremium + loading
+
+  const weeklyEarnings = userData.weekly_earnings || 10000
+  const workerContribution = Math.min(
+    weeklyEarnings * plan.workerPercentage,  // Single source
+    totalActuarialPremium
+  )
+  const platformContribution = totalActuarialPremium - workerContribution
+
+  return {
+    premium_amount: Math.round(workerContribution),
+    coverage_amount: coverageAmount,
+    plan: selectedPlan,
+    breakdown: {
+      pure_premium:         Math.round(purePremium),
+      loading:              Math.round(loading),
+      total_actuarial:      Math.round(totalActuarialPremium),
+      worker_pays:          Math.round(workerContribution),
+      platform_contributes: Math.round(platformContribution),
+      worker_percentage:    plan.workerPercentageDisplay + '%'  // Single source
+    },
+    currency: 'INR'
+  }
+}
+
 module.exports = {
   calculatePremium,              // legacy compat
   calculateWeeklyPremium,        // full premium object
   calculateContributionPremium,  // worker-facing contribution only
   calculatePayout,               // per-event payout
-  PLAN_COVERAGE,
-  PLAN_TRIGGERS,
+  buildPolicyQuote,              // one-shot quote for purchase flow
+  PLAN_CONFIG,                   // single source of truth for plan pricing (coverage + rates)
   PLAN_TRIGGERS,
   CITY_FREQUENCY,
   SEVERITY_FRACTION,

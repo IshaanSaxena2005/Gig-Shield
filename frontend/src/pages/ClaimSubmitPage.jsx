@@ -261,11 +261,11 @@ const ClaimSubmitPage = () => {
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                 <label>What happened? (brief description) *</label>
                 <textarea
-                  rows="8"
+                  rows="3"
                   value={form.description}
                   onChange={e => setForm({ ...form, description: e.target.value })}
                   placeholder="e.g. Section 144 imposed in T. Nagar from 6am to 2pm — police blocked all roads, deliveries impossible in the zone."
-                  style={{ width: "100%", resize: "vertical" }}
+                  style={{ resize: 'vertical' }}
                   required
                   minLength={20}
                 />

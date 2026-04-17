@@ -1,10 +1,6 @@
 const { DataTypes } = require('sequelize')
 const { sequelize } = require('../config/db')
 
-// NOTE: All ENUM fields use DataTypes.STRING on SQLite.
-// SQLite does not enforce ENUMs — Sequelize's alter:true breaks with ENUM columns.
-// Validation is handled at the controller level.
-
 const User = sequelize.define('User', {
   id: {
     type: DataTypes.INTEGER,
@@ -24,20 +20,21 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: false
   },
-  // 'worker' | 'admin'
   role: {
-    type: DataTypes.STRING,
+    type: DataTypes.ENUM('worker', 'admin'),
     defaultValue: 'worker'
   },
-  // 'Zomato' | 'Swiggy' | 'Zepto' | 'Blinkit' | 'Amazon' | 'Flipkart' | 'Other'
+  // FIX: replaced generic 'occupation' string with specific delivery platform ENUM
   platform: {
-    type: DataTypes.STRING,
+    type: DataTypes.ENUM('Zomato', 'Swiggy', 'Zepto', 'Blinkit', 'Amazon', 'Flipkart', 'Other'),
     allowNull: true
   },
+  // Kept for backward compat with existing frontend selects
   occupation: {
     type: DataTypes.STRING,
     allowNull: true
   },
+  // FIX: added — partner ID from the platform (e.g. Z-CHN-48120)
   platformId: {
     type: DataTypes.STRING,
     allowNull: true
@@ -46,20 +43,38 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: true
   },
+  // FIX: added — delivery zone within city (e.g. "T. Nagar / Mylapore")
   deliveryZone: {
     type: DataTypes.STRING,
     allowNull: true
   },
+  // Hyper-local: GPS coordinates for precise weather queries
+  latitude: {
+    type: DataTypes.DECIMAL(10, 7),
+    allowNull: true
+  },
+  longitude: {
+    type: DataTypes.DECIMAL(10, 7),
+    allowNull: true
+  },
+  // Postal code for pincode-level risk granularity
+  pincode: {
+    type: DataTypes.STRING(10),
+    allowNull: true
+  },
+  // FIX: added — used by payout calculator: payout = hours_lost × (avgDailyEarnings / workHoursPerDay)
   avgDailyEarnings: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: true,
-    defaultValue: 700.00
+    defaultValue: 700.00   // conservative default for new workers
   },
+  // FIX: added — typical work hours per day, used to compute hourly rate
   workHoursPerDay: {
     type: DataTypes.DECIMAL(4, 1),
     allowNull: true,
     defaultValue: 6.0
   },
+  // Password reset fields
   resetToken: {
     type: DataTypes.STRING,
     allowNull: true

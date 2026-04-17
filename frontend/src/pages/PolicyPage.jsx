@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
-import PaymentModal from '../components/PaymentModal'
 import { getPolicies, createPolicy, updatePolicyStatus } from '../services/policyService'
 import '../styles/dashboard.css'
 
@@ -53,7 +52,6 @@ const PolicyPage = () => {
   const [formError,     setFormError]     = useState('')
   const [preview,       setPreview]       = useState(null)
   const [previewLoading,setPreviewLoading]= useState(false)
-  const [payingPolicy,  setPayingPolicy]   = useState(null)   // policy to pay for
 
   // Get worker's daily earnings from localStorage (set at login/register)
   const currentUser = (() => {
@@ -79,7 +77,7 @@ const PolicyPage = () => {
     if (!formData.type || !formData.location) { setPreview(null); return }
     let cancelled = false
     setPreviewLoading(true)
-    createPolicy({ type: formData.type, location: formData.location, coverage: 0, previewOnly: true })
+    createPolicy({ type: formData.type, occupation: formData.occupation || 'Other', location: formData.location, coverage: 0, previewOnly: true })
       .then(res => { if (!cancelled) setPreview(res) })
       .catch(() => { if (!cancelled) setPreview(null) })
       .finally(() => { if (!cancelled) setPreviewLoading(false) })
@@ -93,11 +91,11 @@ const PolicyPage = () => {
 
   const handleCreatePolicy = async (e) => {
     e.preventDefault()
-    const { type, location } = formData
-    if (!type || !location) { setFormError('Please select a plan and enter your city'); return }
+    const { type, occupation, location } = formData
+    if (!type || !occupation || !location) { setFormError('Please fill in all fields'); return }
     try {
       setFormLoading(true)
-      const result  = await createPolicy({ type, location, coverage: 0 })
+      const result  = await createPolicy({ type, occupation, location, coverage: 0 })
       const plan    = PLANS.find(p => p.value === type)
       const pct     = result.contributionPct || plan?.rate || ''
       const premium = result.premium
@@ -108,7 +106,18 @@ const PolicyPage = () => {
       await fetchPolicies()
       setTimeout(() => setSuccess(''), 7000)
     } catch (err) {
-      setFormError(err.response?.data?.message || 'Failed to create policy')
+      // Solvency gate — backend returns 503 + code when reserves are critically low.
+      // Show a calmer, user-friendly message instead of a generic "Failed to create policy".
+      const code = err.response?.data?.code
+      if (code === 'POLICY_SALES_HALTED') {
+        setFormError(
+          '🔒 New policy sign-ups are temporarily paused while we top up the ' +
+          'claims reserve fund. This protects existing workers\' coverage. ' +
+          'Please try again in a few hours — your existing policies are unaffected.'
+        )
+      } else {
+        setFormError(err.response?.data?.message || 'Failed to create policy')
+      }
     } finally {
       setFormLoading(false)
     }
@@ -193,9 +202,7 @@ const PolicyPage = () => {
                       <div style={{ fontWeight:500, fontSize:14, color: plan.color, marginBottom:2 }}>{plan.label}</div>
                       <div style={{ fontSize:22, fontWeight:500, color:'var(--color-text-primary)', margin:'4px 0' }}>{plan.rate}<span style={{ fontSize:12, color:'var(--color-text-secondary)', marginLeft:2 }}>of earnings</span></div>
                       <div style={{ fontSize:13, fontWeight:500, color:'var(--color-text-primary)', marginBottom:4 }}>≈ ₹{weeklyPrem}/week</div>
-                      <div style={{ fontSize:11, color:'var(--color-text-secondary)', marginBottom:6 }}>
-                Up to ₹{(Math.round(weeklyEarnings * ({'2.0%':2,'3.5%':3.5,'5.0%':5}[plan.rate]||3.5) / 50) * 50).toLocaleString('en-IN')}/week
-              </div>
+                      <div style={{ fontSize:11, color:'var(--color-text-secondary)', marginBottom:6 }}>Max payout: {plan.cap}/week</div>
                       {plan.triggers.map(t => (
                         <div key={t} style={{ fontSize:11, color:'var(--color-text-secondary)', marginBottom:1 }}>✓ {t}</div>
                       ))}
@@ -230,14 +237,15 @@ const PolicyPage = () => {
                   <div style={{ background:'var(--color-background-secondary)', borderRadius:8, padding:'12px 16px', margin:'0.75rem 0', fontSize:13 }}>
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
                       {[
-                        ['Your contribution', `${preview.contributionPct} of earnings`],
-                        ['Weekly premium',    `₹${preview.premium}`],
-                        ['Coverage cap',      `₹${(preview.coverage||0).toLocaleString('en-IN')}/week (${preview.coverageMultiplier || ''})`],
-                        ['City risk band',    preview.cityRisk || '—'],
-                      ].map(([lbl, val]) => (
+                        ['You pay',        preview.contributionPct || '—',                              `≈ ₹${preview.premium}/week`],
+                        ['Of weekly pay',  `₹${(weeklyEarnings||0).toLocaleString('en-IN')}`,           `₹${dailyEarnings}/day × 7`],
+                        ['Coverage cap',   `₹${(preview.coverage||0).toLocaleString('en-IN')}`,         'per week'],
+                        ['City risk band', preview.cityRisk || '—',                                     null],
+                      ].map(([lbl, val, sub]) => (
                         <div key={lbl}>
                           <div style={{ color:'var(--color-text-secondary)', fontSize:11, marginBottom:2 }}>{lbl}</div>
                           <div style={{ fontWeight:500, color:'var(--color-text-primary)', textTransform:'capitalize' }}>{val}</div>
+                          {sub && <div style={{ color:'var(--color-text-tertiary)', fontSize:11, marginTop:2 }}>{sub}</div>}
                         </div>
                       ))}
                     </div>
@@ -324,9 +332,6 @@ const PolicyPage = () => {
                     <div style={{ fontWeight:500, color:'var(--color-text-primary)', marginBottom:4 }}>{p.label}</div>
                     <div style={{ color:'var(--color-text-secondary)' }}>{p.rate} × ₹{weeklyEarnings.toLocaleString('en-IN')}/week</div>
                     <div style={{ fontWeight:500, fontSize:14, color: p.color, margin:'4px 0' }}>= ₹{wkPrem}/week</div>
-                    <div style={{ color:'var(--color-text-secondary)', fontSize:12, fontWeight:500 }}>
-                      Coverage: ₹{(Math.round(weeklyEarnings * ({'2.0%':2,'3.5%':3.5,'5.0%':5}[p.rate]||3.5) / 50) * 50).toLocaleString('en-IN')}/week
-                    </div>
                     <div style={{ color:'var(--color-text-tertiary)' }}>≈ ₹{Math.round(wkPrem*4.33).toLocaleString('en-IN')}/month</div>
                   </div>
                 )
@@ -355,23 +360,6 @@ const PolicyPage = () => {
         </section>
 
       </div>
-      {/* Payment modal */}
-      {payingPolicy && (
-        <PaymentModal
-          policy={payingPolicy}
-          onSuccess={(result) => {
-            setPayingPolicy(null)
-            setSuccess(`✅ Payment confirmed! Your ${result.planType} plan is active. Coverage: ₹${Number(result.coverage).toLocaleString('en-IN')}/week.`)
-            fetchPolicies()
-            setTimeout(() => setSuccess(''), 8000)
-          }}
-          onClose={() => {
-            setPayingPolicy(null)
-            setSuccess('Plan created but not yet paid. Complete payment to activate coverage.')
-            fetchPolicies()
-          }}
-        />
-      )}
     </div>
   )
 }

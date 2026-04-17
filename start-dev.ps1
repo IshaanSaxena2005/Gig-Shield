@@ -85,7 +85,7 @@ for ($i = 0; $i -lt 20; $i++) {
 if ($aiReady) {
   Write-Host "AI engine ready." -ForegroundColor Green
 } else {
-  Write-Host "AI engine did not start in time - backend will use JS fallback." -ForegroundColor Yellow
+  Write-Host "AI engine did not start in time — backend will use JS fallback." -ForegroundColor Yellow
 }
 
 Start-ServiceWindow -Name 'backend' -WorkingDirectory $backendPath -Command 'npm run dev' -LogFile (Join-Path $root 'backend-dev.log')

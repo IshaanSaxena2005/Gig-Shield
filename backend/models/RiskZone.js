@@ -13,11 +13,27 @@ const RiskZone = sequelize.define('RiskZone', {
     unique: true
   },
   riskLevel: {
-    type: DataTypes.STRING, // 'low' | 'medium' | 'high'
+    type: DataTypes.ENUM('low', 'medium', 'high'),
     allowNull: false
   },
   weatherConditions: {
     type: DataTypes.JSON,
+    allowNull: true
+  },
+  // Hyper-local: sub-zone risk data for intra-city granularity
+  // Format: [{ zone: "T. Nagar", pincode: "600017", riskLevel: "high", floodProne: true, industrialAQI: false }]
+  subZones: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: []
+  },
+  // City-level coordinates (centroid)
+  latitude: {
+    type: DataTypes.DECIMAL(10, 7),
+    allowNull: true
+  },
+  longitude: {
+    type: DataTypes.DECIMAL(10, 7),
     allowNull: true
   },
   updatedAt: {

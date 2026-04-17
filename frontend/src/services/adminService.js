@@ -8,3 +8,4 @@ export const getAllWorkers       = (page = 1)     => api.get(`/admin/workers?pag
 export const getAllClaims        = (page = 1)     => api.get(`/claims/all?page=${page}`).then(r => r.data)
 export const getFlaggedClaims   = (page = 1)     => api.get(`/claims/flagged?page=${page}`).then(r => r.data)
 export const updateClaimStatus  = (id, status, notes = '') => api.put(`/claims/${id}`, { status, notes }).then(r => r.data)
+export const getReserveHealth   = ()             => api.get('/admin/reserves').then(r => r.data)

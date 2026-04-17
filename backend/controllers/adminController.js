@@ -2,7 +2,11 @@ const User    = require('../models/User')
 const Policy  = require('../models/Policy')
 const Claim   = require('../models/Claim')
 const RiskZone = require('../models/RiskZone')
+const Reserve  = require('../models/Reserve')
 const { getFraudAssessment } = require('../services/mlService')
+const { createNotification } = require('../services/notificationService')
+const { recomputeForUser: recomputeBalance } = require('../services/userBalanceService')
+const reserveService = require('../services/reserveService')
 const { Op, fn, col } = require('sequelize')
 
 // ── Dashboard stats with actuarial metrics ───────────────────────────────────
@@ -151,6 +155,120 @@ exports.getAllWorkers = async (req, res) => {
     })
 
     res.json({ workers: rows, total: count, page, totalPages: Math.ceil(count / limit) })
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+}
+
+// Background job admin handlers moved to routes/admin/jobs.js
+// (mounted at /api/admin/jobs/*)
+
+// ── Reserve health (solvency snapshot + recent ledger) ───────────────────────
+
+/**
+ * GET /api/admin/reserves
+ * Returns current solvency ratio, pool breakdown, threshold bands, and the
+ * 20 most recent ledger entries for the admin dashboard.
+ */
+exports.getReserveHealth = async (req, res) => {
+  try {
+    const snap = await reserveService.getSolvencySnapshot()
+
+    const recentEntries = await Reserve.findAll({
+      order: [['created_at', 'DESC']],
+      limit: 20,
+      raw:   true
+    })
+
+    // Derive band for UI colouring (matches thresholds in reserveService)
+    const { THRESHOLDS } = reserveService
+    let band = 'healthy'
+    if (Number.isFinite(snap.ratio)) {
+      if      (snap.ratio < THRESHOLDS.CRITICAL_RATIO)   band = 'critical'
+      else if (snap.ratio < THRESHOLDS.LOW_ALERT_RATIO)  band = 'low'
+      else if (snap.ratio < THRESHOLDS.PAYOUT_MIN_RATIO) band = 'warn'
+    }
+
+    res.json({
+      snapshot: {
+        ...snap,
+        // Number.POSITIVE_INFINITY → null on the wire (JSON can't encode Infinity)
+        ratio: Number.isFinite(snap.ratio) ? snap.ratio : null
+      },
+      band,
+      thresholds:         THRESHOLDS,
+      policySalesHalted:  Number.isFinite(snap.ratio) && snap.ratio < THRESHOLDS.CRITICAL_RATIO,
+      payoutsBlocked:     Number.isFinite(snap.ratio) && snap.ratio < THRESHOLDS.PAYOUT_MIN_RATIO,
+      recentEntries
+    })
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+}
+
+// ── Policy reactivation (admin-initiated un-suspend) ─────────────────────────
+
+/**
+ * POST /api/admin/policies/:id/reactivate
+ * Atomic un-suspension of a policy frozen by the premium-collection retry
+ * logic. Resets both lifecycle and money-health fields so the next 6 AM
+ * collection run treats it like a healthy policy.
+ *
+ * Fails with 409 if the policy isn't in a reactivatable state (only
+ * 'suspended' is eligible — 'cancelled' and 'expired' are terminal).
+ */
+exports.reactivatePolicy = async (req, res) => {
+  try {
+    const policyId = parseInt(req.params.id)
+    if (!Number.isFinite(policyId) || policyId <= 0) {
+      return res.status(400).json({ message: 'Invalid policy id' })
+    }
+
+    const policy = await Policy.findByPk(policyId)
+    if (!policy) return res.status(404).json({ message: 'Policy not found' })
+
+    // Only suspended policies can be reactivated. A 'paused' policy is worker-
+    // controlled (admin can't force-resume it). Terminal states ('cancelled',
+    // 'expired') require creating a new policy, not reactivation.
+    if (policy.status !== 'suspended') {
+      return res.status(409).json({
+        message: `Policy is not suspended (current status: ${policy.status}). Only suspended policies can be reactivated.`
+      })
+    }
+
+    // Atomic: all three premium-collection fields reset together so the next
+    // daily run sees a clean state.
+    await policy.update({
+      status:                    'active',
+      premium_collection_status: 'active',
+      consecutive_failures:      0
+    })
+
+    // Tell the worker their coverage is back
+    try {
+      await createNotification({
+        userId:  policy.userId,
+        type:    'policy_reactivated',
+        title:   'Coverage restored',
+        message: `Your GigShield coverage has been reactivated by our team. Daily premium collection will resume.`,
+        data:    { policyId: policy.id, reactivatedBy: 'admin', adminId: req.user.id }
+      })
+    } catch (err) {
+      console.error(`[adminController] Failed to notify worker of reactivation:`, err.message)
+    }
+
+    // Refresh materialized balance so dashboards show the new state immediately
+    try {
+      await recomputeBalance(policy.userId)
+    } catch (err) {
+      console.error(`[adminController] Balance recompute failed after reactivation:`, err.message)
+    }
+
+    res.json({
+      success: true,
+      message: 'Policy reactivated',
+      policy:  await Policy.findByPk(policyId)
+    })
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
