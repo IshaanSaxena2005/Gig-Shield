@@ -14,6 +14,8 @@
 
 const Policy         = require('../models/Policy')
 const Claim          = require('../models/Claim')
+const PremiumCharge  = require('../models/PremiumCharge')
+const User           = require('../models/User')
 const reserveService = require('../services/reserveService')
 
 // ── Mock UPI payment (primary — for demo and gig workers) ────────────────────
@@ -168,6 +170,142 @@ exports.disbursePayout = async (req, res) => {
 
     console.log(`[paymentController] Payout initiated: claimId=${claimId} upi=${upiId} amount=₹${amount}`)
     res.json(mockPayout)
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+}
+
+// ── Confirm a mock payment (demo mode) ───────────────────────────────────────
+exports.confirmPayment = async (req, res) => {
+  try {
+    const { paymentId, policyId } = req.body
+
+    if (!paymentId || !policyId) {
+      return res.status(400).json({ message: 'paymentId and policyId are required' })
+    }
+
+    const policy = await Policy.findByPk(policyId)
+    if (!policy) {
+      return res.status(404).json({ message: 'Policy not found' })
+    }
+    if (policy.userId !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' })
+    }
+
+    const amountINR = parseFloat(policy.premium)
+    const today = new Date().toISOString().split('T')[0]
+
+    // Check for duplicate payment today
+    const existing = await PremiumCharge.findOne({
+      where: { user_id: req.user.id, policy_id: policyId, charge_date: today, status: 'success' }
+    })
+    if (existing) {
+      return res.status(409).json({ message: 'Premium already paid for today', alreadyPaid: true })
+    }
+
+    // Record the charge
+    await PremiumCharge.create({
+      user_id: req.user.id,
+      policy_id: policyId,
+      amount: amountINR / 7, // daily slice
+      charge_date: today,
+      status: 'success',
+      payment_method: 'upi',
+      reference: paymentId,
+      processed_at: new Date()
+    })
+
+    // Update policy collection tracking
+    await policy.update({
+      last_premium_collection_date: today,
+      premium_collection_status: 'active',
+      consecutive_failures: 0
+    })
+
+    // Credit reserves
+    try {
+      await reserveService.createReserve('liquidity', amountINR / 7, {
+        reference: `premium-${req.user.id}-${today}`,
+        metadata: { operation: 'premium_collection', userId: req.user.id, policyId }
+      })
+    } catch (e) {
+      console.error('[paymentController] Reserve credit failed:', e.message)
+    }
+
+    res.json({
+      success: true,
+      message: `₹${(amountINR / 7).toFixed(0)} daily premium recorded successfully`,
+      paymentId,
+      amount: (amountINR / 7).toFixed(2),
+      date: today
+    })
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+}
+
+// ── Get payment history for the logged-in user ───────────────────────────────
+exports.getPaymentHistory = async (req, res) => {
+  try {
+    const charges = await PremiumCharge.findAll({
+      where: { user_id: req.user.id },
+      order: [['created_at', 'DESC']],
+      limit: 50,
+      include: [{ model: Policy, as: 'policy', attributes: ['type', 'premium', 'coverage'] }]
+    })
+
+    // Also fetch claim payouts
+    const payouts = await Claim.findAll({
+      where: { userId: req.user.id, status: 'approved' },
+      order: [['submittedAt', 'DESC']],
+      limit: 20,
+      attributes: ['id', 'amount', 'status', 'submittedAt', 'description', 'triggerType']
+    })
+
+    const user = await User.findByPk(req.user.id, {
+      attributes: ['payoutMethod', 'payoutHandle', 'payoutAccountName', 'directPayoutConsent']
+    })
+
+    // Calculate totals
+    const totalPremiumsPaid = charges
+      .filter(c => c.status === 'success')
+      .reduce((sum, c) => sum + parseFloat(c.amount || 0), 0)
+
+    const totalPayoutsReceived = payouts
+      .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0)
+
+    res.json({
+      premiumCharges: charges.map(c => ({
+        id: c.id,
+        amount: parseFloat(c.amount),
+        date: c.charge_date,
+        status: c.status,
+        method: c.payment_method,
+        reference: c.reference,
+        policyType: c.policy?.type || '-',
+        createdAt: c.created_at
+      })),
+      payouts: payouts.map(p => ({
+        id: p.id,
+        amount: parseFloat(p.amount),
+        status: p.status,
+        date: p.submittedAt,
+        description: p.description,
+        triggerType: p.triggerType
+      })),
+      payoutSettings: {
+        method: user?.payoutMethod || null,
+        handle: user?.payoutHandle || null,
+        accountName: user?.payoutAccountName || null,
+        consentGiven: Boolean(user?.directPayoutConsent)
+      },
+      summary: {
+        totalPremiumsPaid: totalPremiumsPaid.toFixed(2),
+        totalPayoutsReceived: totalPayoutsReceived.toFixed(2),
+        netBalance: (totalPayoutsReceived - totalPremiumsPaid).toFixed(2),
+        transactionCount: charges.length + payouts.length
+      }
+    })
   } catch (error) {
     res.status(500).json({ message: error.message })
   }

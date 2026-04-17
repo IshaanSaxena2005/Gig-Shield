@@ -45,6 +45,9 @@ const Navbar = () => {
           <Link to="/location-sync" className={isActive('/location-sync')}>Map</Link>
         </li>
         <li>
+          <Link to="/payments" className={isActive('/payments')}>Payments</Link>
+        </li>
+        <li>
           <Link to="/claims/submit" className={isActive('/claims/submit')}>Submit Claim</Link>
         </li>
         {user?.role === 'admin' && (

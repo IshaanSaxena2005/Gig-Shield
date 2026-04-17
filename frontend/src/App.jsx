@@ -8,6 +8,7 @@ import Register             from './pages/Register'
 import WorkerDashboard      from './pages/WorkerDashboard'
 import LocationSyncPage     from './pages/LocationSyncPage'
 import PolicyPage           from './pages/PolicyPage'
+import PaymentsPage         from './pages/PaymentsPage'
 import ClaimSubmitPage      from './pages/ClaimSubmitPage'
 import AdminDashboard       from './pages/AdminDashboard'
 import JobMonitor           from './components/admin/JobMonitor'
@@ -33,6 +34,7 @@ function App() {
           <Route path="/dashboard"      element={<ProtectedRoute><WorkerDashboard /></ProtectedRoute>} />
           <Route path="/location-sync"  element={<ProtectedRoute><LocationSyncPage /></ProtectedRoute>} />
           <Route path="/policy"         element={<ProtectedRoute><PolicyPage /></ProtectedRoute>} />
+          <Route path="/payments"       element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
           <Route path="/claims/submit"  element={<ProtectedRoute><ClaimSubmitPage /></ProtectedRoute>} />
           <Route path="/profile"        element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
