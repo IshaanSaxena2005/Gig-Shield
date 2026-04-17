@@ -42,6 +42,9 @@ const Navbar = () => {
           <Link to="/policy" className={isActive('/policy')}>Policy</Link>
         </li>
         <li>
+          <Link to="/location-sync" className={isActive('/location-sync')}>Map</Link>
+        </li>
+        <li>
           <Link to="/claims/submit" className={isActive('/claims/submit')}>Submit Claim</Link>
         </li>
         {user?.role === 'admin' && (

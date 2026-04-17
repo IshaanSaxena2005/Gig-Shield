@@ -6,6 +6,7 @@ import Home                 from './pages/Home'
 import Login                from './pages/Login'
 import Register             from './pages/Register'
 import WorkerDashboard      from './pages/WorkerDashboard'
+import LocationSyncPage     from './pages/LocationSyncPage'
 import PolicyPage           from './pages/PolicyPage'
 import ClaimSubmitPage      from './pages/ClaimSubmitPage'
 import AdminDashboard       from './pages/AdminDashboard'
@@ -29,10 +30,11 @@ function App() {
           <Route path="/reset-password"  element={<ResetPassword />} />
 
           {/* Protected — worker */}
-          <Route path="/dashboard"     element={<ProtectedRoute><WorkerDashboard /></ProtectedRoute>} />
-          <Route path="/policy"        element={<ProtectedRoute><PolicyPage /></ProtectedRoute>} />
-          <Route path="/claims/submit" element={<ProtectedRoute><ClaimSubmitPage /></ProtectedRoute>} />
-          <Route path="/profile"       element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+          <Route path="/dashboard"      element={<ProtectedRoute><WorkerDashboard /></ProtectedRoute>} />
+          <Route path="/location-sync"  element={<ProtectedRoute><LocationSyncPage /></ProtectedRoute>} />
+          <Route path="/policy"         element={<ProtectedRoute><PolicyPage /></ProtectedRoute>} />
+          <Route path="/claims/submit"  element={<ProtectedRoute><ClaimSubmitPage /></ProtectedRoute>} />
+          <Route path="/profile"        element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
           {/* Protected — admin only */}
           <Route path="/admin"      element={<AdminRoute><AdminDashboard /></AdminRoute>} />

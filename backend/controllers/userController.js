@@ -93,13 +93,13 @@ exports.updateProfile = async (req, res) => {
     const {
       location, occupation, platform, avgDailyEarnings, deliveryZone, platformId,
       latitude, longitude, pincode, payoutMethod, payoutHandle, payoutAccountName,
-      directPayoutConsent, locationTrackingConsent
+      directPayoutConsent, locationTrackingConsent, lastTrackedAt
     } = req.body
 
     const validFields = [
       'location', 'occupation', 'platform', 'avgDailyEarnings', 'deliveryZone', 'platformId',
       'latitude', 'longitude', 'pincode', 'payoutMethod', 'payoutHandle', 'payoutAccountName',
-      'directPayoutConsent', 'locationTrackingConsent'
+      'directPayoutConsent', 'locationTrackingConsent', 'lastTrackedAt'
     ]
 
     const hasAtLeastOne = validFields.some((field) => req.body[field] !== undefined)
@@ -171,6 +171,14 @@ exports.updateProfile = async (req, res) => {
 
     if (locationTrackingConsent !== undefined) {
       updateData.locationTrackingConsent = Boolean(locationTrackingConsent)
+    }
+
+    if (lastTrackedAt !== undefined) {
+      if (lastTrackedAt) {
+        updateData.lastTrackedAt = new Date(lastTrackedAt)
+      } else {
+        updateData.lastTrackedAt = null
+      }
     }
 
     await User.update(updateData, { where: { id: req.user.id } })

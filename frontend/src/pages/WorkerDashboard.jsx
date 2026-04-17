@@ -1,8 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import WorkerCard from '../components/WorkerCard'
 import ClaimAlert from '../components/ClaimAlert'
 import { getDashboardData, updateProfile } from '../services/userService'
+import { useLocationTracker } from '../hooks/useLocationTracker'
 import { getClaims } from '../services/claimService'
 import '../styles/dashboard.css'
 
@@ -56,7 +58,6 @@ const WorkerDashboard = () => {
   const [showProfileForm, setShowProfileForm] = useState(false)
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileMsg, setProfileMsg] = useState('')
-  const [gpsStatus, setGpsStatus] = useState('')
   const [profileForm, setProfileForm] = useState({
     location: '',
     platform: '',
@@ -70,6 +71,63 @@ const WorkerDashboard = () => {
     directPayoutConsent: false,
     locationTrackingConsent: false
   })
+
+  const locationTracker = useLocationTracker(60000)
+  const syncLock = useRef(false)
+
+  // 1. Auto-start tracking if consent was given during registration
+  useEffect(() => {
+    if (dashboardData?.user?.locationTrackingConsent && !locationTracker.isTracking) {
+      locationTracker.startTracking()
+    }
+  }, [dashboardData?.user?.locationTrackingConsent, locationTracker])
+
+  // 2. Silently sync to backend when location changes
+  useEffect(() => {
+    if (locationTracker.location && dashboardData?.user?.locationTrackingConsent && !syncLock.current) {
+      const { lat, lng } = locationTracker.location
+      const currentLat = dashboardData?.user?.latitude ? parseFloat(dashboardData.user.latitude) : 0
+      const currentLng = dashboardData?.user?.longitude ? parseFloat(dashboardData.user.longitude) : 0
+      
+      // Sync if moved significantly (~10 meters) or never synced before
+      if (Math.abs(lat - currentLat) > 0.0001 || Math.abs(lng - currentLng) > 0.0001) {
+        syncLock.current = true
+        
+        // Reverse geocode and sync
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+          .then(res => res.json())
+          .then(data => {
+            const address = data?.address || {}
+            const city = address.city || address.town || address.village || address.state_district
+            const suburb = address.suburb || address.neighbourhood || address.residential
+            
+            return updateProfile({
+              latitude: lat,
+              longitude: lng,
+              ...(city && { location: city }),
+              ...(suburb && { deliveryZone: suburb }),
+              locationTrackingConsent: true
+            })
+          })
+          .catch(() => {
+             // Fallback to just coordinates if geocoding fails
+             return updateProfile({
+               latitude: lat,
+               longitude: lng,
+               locationTrackingConsent: true
+             })
+          })
+          .then(() => {
+             fetchData()
+             setTimeout(() => { syncLock.current = false }, 5000) // 5s cooldown
+          })
+          .catch(err => {
+             console.error('Auto-sync failed', err)
+             syncLock.current = false
+          })
+      }
+    }
+  }, [locationTracker.location, dashboardData, fetchData])
 
   const fetchData = useCallback(async () => {
     try {
@@ -102,27 +160,6 @@ const WorkerDashboard = () => {
     fetchData()
   }, [fetchData])
 
-  const captureGps = () => {
-    if (!navigator.geolocation) {
-      setGpsStatus('Geolocation is not supported in this browser')
-      return
-    }
-
-    setGpsStatus('Capturing current location...')
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const latitude = position.coords.latitude.toFixed(6)
-        const longitude = position.coords.longitude.toFixed(6)
-        setProfileForm((prev) => ({ ...prev, latitude, longitude }))
-        setGpsStatus(`Location captured at ${latitude}, ${longitude}`)
-      },
-      (geoError) => {
-        setGpsStatus(geoError.message)
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-    )
-  }
-
   const handleProfileUpdate = async (e) => {
     e.preventDefault()
     setProfileMsg('')
@@ -139,14 +176,7 @@ const WorkerDashboard = () => {
         platform: profileForm.platform,
         occupation: profileForm.platform,
         deliveryZone: profileForm.deliveryZone || undefined,
-        avgDailyEarnings: profileForm.avgDailyEarnings ? parseFloat(profileForm.avgDailyEarnings) : undefined,
-        latitude: profileForm.latitude !== '' ? parseFloat(profileForm.latitude) : undefined,
-        longitude: profileForm.longitude !== '' ? parseFloat(profileForm.longitude) : undefined,
-        payoutMethod: profileForm.payoutMethod || undefined,
-        payoutHandle: profileForm.payoutHandle || undefined,
-        payoutAccountName: profileForm.payoutAccountName || undefined,
-        directPayoutConsent: profileForm.directPayoutConsent,
-        locationTrackingConsent: profileForm.locationTrackingConsent
+        avgDailyEarnings: profileForm.avgDailyEarnings ? parseFloat(profileForm.avgDailyEarnings) : undefined
       })
       setProfileMsg('Profile updated successfully')
       setShowProfileForm(false)
@@ -227,51 +257,32 @@ const WorkerDashboard = () => {
                 <input type="text" value={profileForm.deliveryZone} onChange={(e) => setProfileForm({ ...profileForm, deliveryZone: e.target.value })} />
               </div>
               <div className="form-group">
-                <label>Home GPS for anti-spoofing verification</label>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <button type="button" className="action-btn" onClick={captureGps}>Capture current location</button>
-                  {profileForm.latitude && profileForm.longitude && (
-                    <span style={{ fontSize: 12, color: '#27ae60' }}>{Number(profileForm.latitude).toFixed(4)}, {Number(profileForm.longitude).toFixed(4)}</span>
-                  )}
-                </div>
-                {gpsStatus && <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>{gpsStatus}</div>}
-              </div>
-
-              <div className="info-card" style={{ marginBottom: '1rem', background: '#f8fbff' }}>
-                <h3 style={{ marginBottom: '0.75rem' }}>Direct payment to the delivery partner</h3>
-                <p style={{ color: '#666', fontSize: 13, marginBottom: '0.75rem' }}>
-                  Approved payouts go directly to the delivery partner account. No third-party involvement.
+                <Link 
+                  to="/location-sync"
+                  style={{
+                    display: 'inline-block',
+                    width: '100%',
+                    padding: '1rem',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    textAlign: 'center',
+                    borderRadius: '8px',
+                    textDecoration: 'none',
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    marginTop: '0.5rem',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.target.style.transform = 'scale(1.02)'}
+                  onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                >
+                  📍 Manage Location Tracking →
+                </Link>
+                <p style={{ fontSize: '12px', color: '#666', marginTop: '0.75rem', textAlign: 'center' }}>
+                  Click to sync your location, set delivery zone, and update your home coordinates
                 </p>
-                <div className="form-group">
-                  <label>Payout Method</label>
-                  <select value={profileForm.payoutMethod} onChange={(e) => setProfileForm({ ...profileForm, payoutMethod: e.target.value })}>
-                    <option value="UPI">UPI</option>
-                    <option value="BANK_TRANSFER">Bank transfer</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>{profileForm.payoutMethod === 'UPI' ? 'UPI ID' : 'Bank transfer reference'}</label>
-                  <input type="text" value={profileForm.payoutHandle} onChange={(e) => setProfileForm({ ...profileForm, payoutHandle: e.target.value })} />
-                </div>
-                <div className="form-group">
-                  <label>Account Holder Name</label>
-                  <input type="text" value={profileForm.payoutAccountName} onChange={(e) => setProfileForm({ ...profileForm, payoutAccountName: e.target.value })} />
-                </div>
-                <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13 }}>
-                  <input type="checkbox" checked={profileForm.directPayoutConsent} onChange={(e) => setProfileForm({ ...profileForm, directPayoutConsent: e.target.checked })} />
-                  <span>I confirm direct payment to the delivery partner with no third-party involvement.</span>
-                </label>
-              </div>
-
-              <div className="info-card" style={{ marginBottom: '1rem', background: '#f8fbff' }}>
-                <h3 style={{ marginBottom: '0.75rem' }}>Tracking the location of the delivery partner</h3>
-                <p style={{ color: '#666', fontSize: 13, marginBottom: '0.75rem' }}>
-                  Consented GPS verification helps match exact trigger zones and reduce spoofing-based fraud.
-                </p>
-                <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13 }}>
-                  <input type="checkbox" checked={profileForm.locationTrackingConsent} onChange={(e) => setProfileForm({ ...profileForm, locationTrackingConsent: e.target.checked })} />
-                  <span>I consent to location tracking for trigger verification and fair payouts.</span>
-                </label>
               </div>
 
               <div style={{ display: 'flex', gap: '1rem' }}>
@@ -302,6 +313,39 @@ const WorkerDashboard = () => {
           </section>
         )}
 
+        {/* Location Sync Prompt - Show when not synced and no consent given */}
+        {(!locationTrackingReady && !dashboardData?.user?.locationTrackingConsent) && (
+          <section className="dashboard-section">
+            <div className="info-card" style={{ background: '#fff3cd', borderLeft: '4px solid #ffc107' }}>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', color: '#856404' }}>
+                📍 Sync Your Location to Unlock Full Protection
+              </h3>
+              <p style={{ color: '#856404', fontSize: '14px', marginBottom: '1rem', lineHeight: '1.5' }}>
+                Your location helps us verify trigger zones, match local weather data, and process claims faster. 
+                <strong> Sync your GPS location now</strong> to activate real-time location tracking.
+              </p>
+              <Link 
+                to="/location-sync"
+                style={{
+                  display: 'inline-block',
+                  padding: '0.75rem 1.5rem',
+                  background: '#ffc107',
+                  color: '#000',
+                  textDecoration: 'none',
+                  borderRadius: '6px',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#ffb300'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#ffc107'}
+              >
+                🟢 Start Location Sync →
+              </Link>
+            </div>
+          </section>
+        )}
+
         <section className="dashboard-section">
           <WorkerCard
             name={workerData.name}
@@ -315,6 +359,63 @@ const WorkerDashboard = () => {
             Edit work details and payout settings
           </button>
         </section>
+
+        {/* Location Details Card */}
+        {locationTrackingReady && (
+          <section className="dashboard-section">
+            <div className="info-card" style={{ background: '#f0f9ff', borderLeft: '4px solid #667eea' }}>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                📍 Your Active Location
+              </h3>
+              <div className="info-grid">
+                <div className="info-item">
+                  <span className="label">Status</span>
+                  <span style={{ color: '#22c55e', fontWeight: '600' }}>✅ Location Synced</span>
+                </div>
+                <div className="info-item">
+                  <span className="label">Last Updated</span>
+                  <span className="value">
+                    {dashboardData?.user?.lastTrackedAt
+                      ? new Date(dashboardData.user.lastTrackedAt).toLocaleString()
+                      : 'Recently'}
+                  </span>
+                </div>
+                <div className="info-item">
+                  <span className="label">Latitude</span>
+                  <span className="value" style={{ fontFamily: 'monospace' }}>
+                    {dashboardData?.user?.latitude ? parseFloat(dashboardData.user.latitude).toFixed(6) : '-'}
+                  </span>
+                </div>
+                <div className="info-item">
+                  <span className="label">Longitude</span>
+                  <span className="value" style={{ fontFamily: 'monospace' }}>
+                    {dashboardData?.user?.longitude ? parseFloat(dashboardData.user.longitude).toFixed(6) : '-'}
+                  </span>
+                </div>
+                <div className="info-item">
+                  <span className="label">Delivery Zone</span>
+                  <span className="value">{dashboardData?.user?.deliveryZone || 'Not set'}</span>
+                </div>
+              </div>
+              <Link 
+                to="/location-sync"
+                style={{
+                  display: 'inline-block',
+                  marginTop: '1rem',
+                  padding: '0.75rem 1.5rem',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  textDecoration: 'none',
+                  borderRadius: '6px',
+                  fontWeight: '500',
+                  fontSize: '14px'
+                }}
+              >
+                🔄 Update Location
+              </Link>
+            </div>
+          </section>
+        )}
 
         <section className="dashboard-section">
           <div className="info-card">
@@ -348,54 +449,21 @@ const WorkerDashboard = () => {
         </section>
 
         <section className="dashboard-section">
-          <div className="info-grid">
-            <div className="info-card">
-              <h3>Direct payment to the delivery partner</h3>
-              <p style={{ color: '#666', fontSize: 14, marginBottom: '0.75rem' }}>
-                Approved payouts go directly to the delivery partner account with no third-party involvement.
-              </p>
-              <div className="info-item">
-                <span className="label">Status</span>
-                <span className={`status-badge ${directPayoutReady ? 'approved' : 'pending'}`}>
-                  {directPayoutReady ? 'Direct payout enabled' : 'Setup required'}
-                </span>
+          <div className="info-card" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+              💳 Payment Details
+            </h3>
+            <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '1rem' }}>
+              Approved payouts are sent directly to this destination without any third-party involvement.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: '#fff', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '24px' }}>🏦</div>
+              <div>
+                <div style={{ fontSize: '12px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Destination</div>
+                <div style={{ fontWeight: '600', color: '#0f172a', fontFamily: 'monospace', fontSize: '15px' }}>
+                  {dashboardData?.user?.payoutHandle || 'Please add your UPI or bank details in the profile'}
+                </div>
               </div>
-              <div className="info-item">
-                <span className="label">Destination</span>
-                <span className="value">{dashboardData?.user?.payoutHandle || 'Add your UPI or bank payout route'}</span>
-              </div>
-            </div>
-
-            <div className="info-card">
-              <h3>Tracking the location of the delivery partner</h3>
-              <p style={{ color: '#666', fontSize: 14, marginBottom: '0.75rem' }}>
-                Live location verification helps us match exact trigger zones, price hyper-local risk fairly, and block spoofing.
-              </p>
-              <div className="info-item">
-                <span className="label">Tracking status</span>
-                <span className={`status-badge ${locationTrackingReady ? 'approved' : 'pending'}`}>
-                  {locationTrackingReady ? 'Tracking active' : 'Consent or location sync needed'}
-                </span>
-              </div>
-              <div className="info-item">
-                <span className="label">Last sync</span>
-                <span className="value">
-                  {dashboardData?.user?.lastTrackedAt
-                    ? new Date(dashboardData.user.lastTrackedAt).toLocaleString()
-                    : 'No recent location sync'}
-                </span>
-              </div>
-              <button
-                type="button"
-                className="action-btn"
-                style={{ marginTop: '0.75rem' }}
-                onClick={() => {
-                  setShowProfileForm(true)
-                  captureGps()
-                }}
-              >
-                Sync delivery-partner location now
-              </button>
             </div>
           </div>
         </section>

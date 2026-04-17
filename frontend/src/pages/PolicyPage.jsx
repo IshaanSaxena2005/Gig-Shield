@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
 import { getPolicies, createPolicy, updatePolicyStatus } from '../services/policyService'
+import { getDashboardData } from '../services/userService'
 import '../styles/dashboard.css'
 
 const PLANS = [
@@ -57,7 +58,7 @@ const PolicyPage = () => {
   const currentUser = (() => {
     try { return JSON.parse(localStorage.getItem('user') || '{}') } catch { return {} }
   })()
-  const dailyEarnings = currentUser.avgDailyEarnings || 700
+  const [dailyEarnings, setDailyEarnings] = useState(currentUser.avgDailyEarnings || 700)
   const weeklyEarnings = dailyEarnings * 7
 
   const fetchPolicies = async () => {
@@ -70,7 +71,19 @@ const PolicyPage = () => {
     finally  { setLoading(false) }
   }
 
-  useEffect(() => { fetchPolicies() }, [])
+  useEffect(() => { 
+    fetchPolicies() 
+    getDashboardData().then(data => {
+      if (data?.user) {
+        setDailyEarnings(data.user.avgDailyEarnings || 700)
+        setFormData(prev => ({
+          ...prev,
+          occupation: prev.occupation || data.user.platform || data.user.occupation || '',
+          location: prev.location || data.user.location || ''
+        }))
+      }
+    }).catch(err => console.error("Failed to fetch fresh user data", err))
+  }, [])
 
   // Fetch live preview whenever type or location changes
   useEffect(() => {

@@ -26,22 +26,35 @@ const Login = () => {
 
     try {
       setLoading(true)
+      console.log('[Login] Attempting login with email:', formData.email)
       // FIX: actually call the real API instead of mocking it
       const data = await loginUser(formData.email, formData.password)
+      console.log('[Login] Login successful, received data:', data)
 
       // Save full user object including token to localStorage
       localStorage.setItem('user', JSON.stringify(data))
+      console.log('[Login] User saved to localStorage')
 
       // Redirect back to where they came from, or role-based default
       if (from) {
+        console.log('[Login] Redirecting to:', from)
         navigate(from)
       } else if (data.role === 'admin') {
+        console.log('[Login] Admin user, redirecting to /admin')
         navigate('/admin')
       } else {
+        console.log('[Login] Regular user, redirecting to /dashboard')
         navigate('/dashboard')
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid email or password')
+      const errorMsg = err.response?.data?.message || err.message || 'Invalid email or password'
+      console.error('[Login] Error:', {
+        message: errorMsg,
+        status: err.response?.status,
+        data: err.response?.data,
+        fullError: err
+      })
+      setError(errorMsg)
     } finally {
       setLoading(false)
     }
@@ -50,42 +63,48 @@ const Login = () => {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h2>Login to GigShield AI</h2>
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🛡️</div>
+          <h2>Welcome Back</h2>
+          <p className="auth-subtitle">Login to manage your insurance coverage</p>
+        </div>
 
-        {error && <div className="error-message">{error}</div>}
+        {error && <div className="error-message">❌ {error}</div>}
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
-            <label>Email</label>
+            <label htmlFor="email">Email Address</label>
             <input
+              id="email"
               type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder="Enter your email"
+              placeholder="you@example.com"
               required
             />
           </div>
 
           <div className="form-group">
-            <label>Password</label>
+            <label htmlFor="password">Password</label>
             <input
+              id="password"
               type="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
-              placeholder="Enter your password"
+              placeholder="••••••••"
               required
             />
           </div>
 
           <button type="submit" className="submit-btn" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? '⏳ Logging in...' : '🚀 Login'}
           </button>
         </form>
 
         <p className="auth-link">
-          Don't have an account? <Link to="/register">Register here</Link>
+          Don't have an account? <Link to="/register">Create one</Link>
         </p>
         <p className="auth-link">
           <Link to="/forgot-password">Forgot your password?</Link>

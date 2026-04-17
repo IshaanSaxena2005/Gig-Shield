@@ -77,9 +77,13 @@ const Register = () => {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h2>Register as Delivery Partner</h2>
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📦</div>
+          <h2>Get Insured Today</h2>
+          <p className="auth-subtitle">Protect your delivery income from weather disruptions</p>
+        </div>
 
-        {error && <div className="error-message">{error}</div>}
+        {error && <div className="error-message">❌ {error}</div>}
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
@@ -138,60 +142,124 @@ const Register = () => {
             </small>
           </div>
 
-          <div className="info-card" style={{ marginBottom: '1rem', background: '#f8fbff' }}>
-            <h3 style={{ marginBottom: '0.75rem' }}>Direct payment to the delivery partner</h3>
-            <p style={{ marginBottom: '0.75rem', color: 'var(--color-text-secondary)', fontSize: '14px' }}>
-              Approved payouts go directly to the delivery partner. No third-party involvement in the payout path.
+          <div style={{
+            marginBottom: '1.5rem',
+            background: 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)',
+            border: '2px solid #667eea30',
+            borderRadius: '12px',
+            padding: '1.5rem',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+              <div style={{ fontSize: '2.5rem' }}>💳</div>
+              <div>
+                <h3 style={{ margin: '0', fontSize: '1.1rem', fontWeight: '600' }}>Fast Payouts</h3>
+                <p style={{ margin: '0.25rem 0 0 0', color: 'var(--color-text-secondary)', fontSize: '13px' }}>Direct to your account in 24 hours</p>
+              </div>
+            </div>
+            <p style={{ margin: '1rem 0', color: 'var(--color-text-secondary)', fontSize: '14px', lineHeight: '1.5' }}>
+              ✅ No middlemen • ✅ No delays • ✅ 100% transparent
             </p>
-            <div className="form-group">
-              <label>Payout Method</label>
-              <select name="payoutMethod" value={formData.payoutMethod} onChange={handleChange}>
-                <option value="UPI">UPI</option>
-                <option value="BANK_TRANSFER">Bank transfer</option>
-              </select>
+            <div style={{ background: 'white', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label style={{ fontWeight: '500', fontSize: '13px' }}>How would you like to receive payouts?</label>
+                <select name="payoutMethod" value={formData.payoutMethod} onChange={handleChange} style={{ marginTop: '0.5rem' }}>
+                  <option value="UPI">📱 UPI (Fastest)</option>
+                  <option value="BANK_TRANSFER">🏦 Bank Transfer</option>
+                </select>
+              </div>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label style={{ fontWeight: '500', fontSize: '13px' }}>{formData.payoutMethod === 'UPI' ? '📱 Your UPI ID' : '🏦 Account Details'}</label>
+                <input
+                  type="text"
+                  name="payoutHandle"
+                  value={formData.payoutHandle}
+                  onChange={handleChange}
+                  placeholder={formData.payoutMethod === 'UPI' ? 'yourname@upi' : 'Account number or IBAN'}
+                  style={{ marginTop: '0.5rem' }}
+                />
+              </div>
+              <div className="form-group">
+                <label style={{ fontWeight: '500', fontSize: '13px' }}>👤 Name on account</label>
+                <input
+                  type="text"
+                  name="payoutAccountName"
+                  value={formData.payoutAccountName}
+                  onChange={handleChange}
+                  placeholder="Your full name"
+                  style={{ marginTop: '0.5rem' }}
+                />
+              </div>
             </div>
-            <div className="form-group">
-              <label>{formData.payoutMethod === 'UPI' ? 'UPI ID' : 'Bank transfer reference'}</label>
-              <input
-                type="text"
-                name="payoutHandle"
-                value={formData.payoutHandle}
-                onChange={handleChange}
-                placeholder={formData.payoutMethod === 'UPI' ? 'name@upi' : 'Registered payout account'}
-              />
-            </div>
-            <div className="form-group">
-              <label>Account Holder Name</label>
-              <input
-                type="text"
-                name="payoutAccountName"
-                value={formData.payoutAccountName}
-                onChange={handleChange}
-                placeholder="Name on payout account"
-              />
-            </div>
-            <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13 }}>
+            <label style={{
+              display: 'flex',
+              gap: '10px',
+              alignItems: 'flex-start',
+              fontSize: '13px',
+              background: '#e8f5e9',
+              padding: '0.75rem',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              border: '1px solid #c8e6c9'
+            }}>
               <input
                 type="checkbox"
                 checked={formData.directPayoutConsent}
                 onChange={(e) => setFormData({ ...formData, directPayoutConsent: e.target.checked })}
+                style={{ marginTop: '2px', cursor: 'pointer' }}
               />
-              <span>I confirm direct payment to the delivery partner with no third-party involvement.</span>
+              <span style={{ fontWeight: '500' }}>I confirm direct payments. No third parties involved.</span>
             </label>
           </div>
 
-          <div className="info-card" style={{ marginBottom: '1rem', background: '#f8fbff' }}>
-            <h3 style={{ marginBottom: '0.75rem' }}>Tracking the location of the delivery partner</h3>
-            <p style={{ marginBottom: '0.75rem', color: 'var(--color-text-secondary)', fontSize: '14px' }}>
-              Consented location tracking is used to verify trigger zones, match local weather and AQI data, and reduce spoofing-based fraud.
-            </p>
-            <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13 }}>
+          <div style={{
+            marginBottom: '1.5rem',
+            background: 'linear-gradient(135deg, #f093fb15 0%, #f5576c15 100%)',
+            border: '2px solid #f093fb30',
+            borderRadius: '12px',
+            padding: '1.5rem',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+              <div style={{ fontSize: '2.5rem' }}>📍</div>
+              <div>
+                <h3 style={{ margin: '0', fontSize: '1.1rem', fontWeight: '600' }}>Smart Location Tracking</h3>
+                <p style={{ margin: '0.25rem 0 0 0', color: 'var(--color-text-secondary)', fontSize: '13px' }}>Verify claims faster & prevent fraud</p>
+              </div>
+            </div>
+            <div style={{
+              background: 'white',
+              borderRadius: '8px',
+              padding: '1rem',
+              marginBottom: '1rem',
+              lineHeight: '1.6'
+            }}>
+              <p style={{ margin: '0 0 0.75rem 0', color: 'var(--color-text-secondary)', fontSize: '13px' }}>
+                <strong>What we use it for:</strong>
+              </p>
+              <ul style={{ margin: '0', paddingLeft: '1.5rem', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                <li>🌍 Match your location to trigger zones</li>
+                <li>🌤️ Verify local weather conditions during claims</li>
+                <li>✅ Ensure fair and accurate payouts</li>
+                <li>🛡️ Prevent location spoofing fraud</li>
+              </ul>
+            </div>
+            <label style={{
+              display: 'flex',
+              gap: '10px',
+              alignItems: 'flex-start',
+              fontSize: '13px',
+              background: '#e3f2fd',
+              padding: '0.75rem',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              border: '1px solid #bbdefb'
+            }}>
               <input
                 type="checkbox"
                 checked={formData.locationTrackingConsent}
                 onChange={(e) => setFormData({ ...formData, locationTrackingConsent: e.target.checked })}
+                style={{ marginTop: '2px', cursor: 'pointer' }}
               />
-              <span>I consent to location tracking for trigger verification and fair payouts.</span>
+              <span style={{ fontWeight: '500' }}>I consent to location tracking for faster claim verification.</span>
             </label>
           </div>
 
@@ -220,7 +288,7 @@ const Register = () => {
           </div>
 
           <button type="submit" className="submit-btn" disabled={loading}>
-            {loading ? 'Registering...' : 'Register'}
+            {loading ? '⏳ Creating your account...' : '✨ Get Insured'}
           </button>
         </form>
 
